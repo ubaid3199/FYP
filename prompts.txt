@@ -1,0 +1,7 @@
+i am creating a web app for my university for my fyp, i want the app to have all the latest features , the main feature in the app would be a chat bot that i want to power using local llm using olama and gpt20 , and i will provide all the necessary documentation in a pdf format and then the chat bot would be expected to help students with their day to day questions around uni life, ranging from events in the uni, class scedguels , different resources that are hard to find and explore because currently the uni is running on various different services including moodle, seats, nest, handshake, job portal is different, and soo much more, basically i expect the chat bot to know and help the students with anything and everything, and also i want the web app to have links to all the university resources on the home page, i expect different services to open within the web app, like moodle, seats, nest and everything, i also expect the app to remember the sessions, where students left off and they can simply and easily continue where they left , i want to use the latest and most efficient languages and technology , in future i also expect the app to have an interactive map of the uni as our uni is pretty huge and it is often very difficult to find rooms, i would also love the app to be generic, as in any university can get it and customise and train it according to their needs , i want you to help me step by step as i am a beginer
+
+
+
+
+
+

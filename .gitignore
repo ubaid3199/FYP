@@ -1,0 +1,35 @@
+# ── Credentials & secrets ──────────────────────────────────────────────────
+.env
+.env.local
+.env*.local
+scraper/.env
+scraper/session_cookies.json
+
+# ── RAG vector store (large binary, machine-specific) ──────────────────────
+hybrid_store.json
+web-app/hybrid_store.json
+
+# ── Scraped data & training files (large, generated) ──────────────────────
+pdf files/
+Nest PDF's/
+
+# ── Node / Next.js ─────────────────────────────────────────────────────────
+node_modules/
+web-app/node_modules/
+web-app/.next/
+web-app/out/
+*.log
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+scraper/__pycache__/
+
+# ── IDE ────────────────────────────────────────────────────────────────────
+.vscode/
+web-app/.vscode/
+*.DS_Store
+
+# ── Misc ───────────────────────────────────────────────────────────────────
+packages/
