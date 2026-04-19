@@ -1,7 +1,7 @@
 # 🕷️ Roehampton Portal Scraper
 
 Scrapes the University of Roehampton student portal using Playwright and saves
-the content as `.txt` files that can be uploaded directly to the **MyUni AI
+the content as `.md` files that can be uploaded directly to the **MyUni AI
 Training Studio** (Incremental Add).
 
 ---
@@ -11,7 +11,7 @@ Training Studio** (Incremental Add).
 Scraped files are saved to:
 
 ```
-fyp/pdf files/scraped/          ← HTML pages as .txt files
+fyp/pdf files/scraped/          ← HTML pages as .md files
 fyp/pdf files/scraped/pdfs/     ← Downloaded PDFs
 ```
 
@@ -80,6 +80,20 @@ python scrape.py --headless
 ```bash
 python scrape.py --max-pages 50
 ```
+
+### Skip very short pages
+
+Useful when portal pages contain shell content/navigation only.
+
+```bash
+python scrape.py --min-content 200
+```
+
+### Reliability improvements now included
+
+- Automatic navigation retries with backoff for transient timeout failures.
+- Duplicate-content skipping to reduce noisy retraining data.
+- Safer PDF fallback download validation to avoid saving login HTML as `.pdf`.
 
 ---
 

@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-04-19T10:19:11.365Z",
+  "scannedDir": "C:\\Users\\Ubaid\\Desktop\\fyp\\pdf files\\scraped\\pdfs",
+  "scannedPdfCount": 188,
+  "goodCount": 186,
+  "issueCount": 2,
+  "issues": [
+    {
+      "file": "BUS020X642S-Corporate-Finance-May-2019-Annuity-and-present-value-tables.pdf",
+      "severity": "warning",
+      "reason": "Primary parser output poor quality",
+      "bytes": 156924,
+      "chars": 12,
+      "parserUsed": "pdf-parse-poor",
+      "primaryLength": 12,
+      "fallbackLength": 0
+    },
+    {
+      "file": "BUS020X645S-Accounting-for-Decision-Making-May-2019-Annuity-and-present-value-.pdf",
+      "severity": "warning",
+      "reason": "Primary parser output poor quality",
+      "bytes": 156924,
+      "chars": 12,
+      "parserUsed": "pdf-parse-poor",
+      "primaryLength": 12,
+      "fallbackLength": 0
+    }
+  ],
+  "findings": [
+    {
+      "file": "BUS020X642S-Corporate-Finance-May-2019-Annuity-and-present-value-tables.pdf",
+      "severity": "warning",
+      "reason": "Primary parser output poor quality",
+      "bytes": 156924,
+      "chars": 12,
+      "parserUsed": "pdf-parse-poor",
+      "primaryLength": 12,
+      "fallbackLength": 0
+    },
+    {
+      "file": "BUS020X645S-Accounting-for-Decision-Making-May-2019-Annuity-and-present-value-.pdf",
+      "severity": "warning",
+      "reason": "Primary parser output poor quality",
+      "bytes": 156924,
+      "chars": 12,
+      "parserUsed": "pdf-parse-poor",
+      "primaryLength": 12,
+      "fallbackLength": 0
+    }
+  ]
+}

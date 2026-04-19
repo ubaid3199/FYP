@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRAGStore } from "@/lib/domains/rag";
+import { extractPdfTextRobust } from "@/lib/domains/rag/pdfExtract";
 import { Document } from "@langchain/core/documents";
 import * as os from "os";
 import * as path from "path";
 import * as fs from "fs";
-const { PDFParse } = require("pdf-parse");
 import mammoth from "mammoth";
 
 function isValidHttpUrl(value: string) {
@@ -57,13 +57,7 @@ async function parseDocument(filePath: string, ext: string): Promise<string> {
     return fs.readFileSync(filePath, "utf-8");
   } else if (ext === ".pdf") {
     const buffer = fs.readFileSync(filePath);
-    const parser = new PDFParse({ data: buffer });
-    try {
-      const parsed = await parser.getText();
-      return parsed.text || "";
-    } finally {
-      await parser.destroy();
-    }
+    return extractPdfTextRobust(buffer, filePath);
   } else if (ext === ".docx") {
     const result = await mammoth.extractRawText({ path: filePath });
     return result.value;

@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "ingest": "tsx scripts/ingest.ts"
+    "ingest": "tsx scripts/ingest.ts",
+    "report:pdf-quality": "tsx scripts/pdf-quality-report.ts",
+    "mock:haystack": "node scripts/mock-haystack-server.mjs"
   },
   "dependencies": {
     "@langchain/textsplitters": "^1.0.1",

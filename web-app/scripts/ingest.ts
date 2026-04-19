@@ -1,10 +1,10 @@
 import { Document } from "@langchain/core/documents";
 import { OllamaEmbeddings } from "@langchain/ollama";
 import { HybridRAG } from "../lib/rag";
+import { extractPdfTextRobust } from "../lib/domains/rag/pdfExtract";
 import * as fs from "fs";
 import * as path from "path";
 import mammoth from "mammoth";
-const { PDFParse } = require("pdf-parse");
 import dotenv from "dotenv";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
@@ -23,13 +23,7 @@ async function parseDocument(filePath: string): Promise<string> {
     return fs.readFileSync(filePath, "utf-8");
   } else if (ext === ".pdf") {
     const buffer = fs.readFileSync(filePath);
-    const parser = new PDFParse({ data: buffer });
-    try {
-      const parsed = await parser.getText();
-      return parsed.text || "";
-    } finally {
-      await parser.destroy();
-    }
+    return extractPdfTextRobust(buffer, filePath);
   } else if (ext === ".docx") {
     const result = await mammoth.extractRawText({ path: filePath });
     return result.value;

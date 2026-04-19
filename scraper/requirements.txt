@@ -2,4 +2,3 @@ playwright
 beautifulsoup4
 python-dotenv
 requests
-markdownify

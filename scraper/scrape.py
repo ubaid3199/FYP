@@ -16,6 +16,8 @@ Usage:
 """
 
 import argparse
+from collections import deque
+import hashlib
 import json
 import os
 import re
@@ -25,7 +27,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 from bs4 import BeautifulSoup
-from markdownify import markdownify as md
+import requests
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Config
@@ -54,6 +56,8 @@ SKIP_PATTERNS = re.compile(
 MAX_PAGES   = 300
 NAV_TIMEOUT = 30_000   # ms per page navigation
 MIN_CONTENT = 0        # save everything — SharePoint pages are JS-rendered and often short
+NAV_RETRIES = 2
+RETRY_BACKOFF_SECONDS = 1.5
 
 # Set dynamically after login (see main())
 HOME_DOMAIN      = ""   # e.g. roehamptonprod.sharepoint.com
@@ -114,6 +118,31 @@ def unique_path(directory: Path, stem: str, suffix: str) -> Path:
         path = directory / f"{stem}_{counter}{suffix}"
         counter += 1
     return path
+
+
+def fetch_with_retry(page, url: str):
+    """Navigate with retry/backoff to reduce transient timeout failures."""
+    last_error = None
+
+    for attempt in range(1, NAV_RETRIES + 2):
+        try:
+            return page.goto(url, timeout=NAV_TIMEOUT)
+        except PlaywrightTimeoutError as e:
+            last_error = e
+            if attempt > NAV_RETRIES:
+                break
+            wait_s = RETRY_BACKOFF_SECONDS * attempt
+            print(f"  ⏰  Timeout (attempt {attempt}/{NAV_RETRIES + 1}): {url} — retrying in {wait_s:.1f}s")
+            page.wait_for_timeout(int(wait_s * 1000))
+        except Exception as e:
+            last_error = e
+            if attempt > NAV_RETRIES:
+                break
+            wait_s = RETRY_BACKOFF_SECONDS * attempt
+            print(f"  ⚠️  Nav error (attempt {attempt}/{NAV_RETRIES + 1}): {url} — retrying in {wait_s:.1f}s")
+            page.wait_for_timeout(int(wait_s * 1000))
+
+    raise last_error if last_error else RuntimeError(f"Navigation failed for {url}")
 
 
 def get_page_content(page, current_url: str) -> tuple[str, str]:
@@ -229,16 +258,24 @@ def download_pdf(page, url: str):
     pdf_path = unique_path(PDF_SUBDIR, stem, ".pdf")
     try:
         with page.expect_download(timeout=30_000) as dl_info:
-            page.goto(url, timeout=NAV_TIMEOUT)
+            fetch_with_retry(page, url)
         dl_info.value.save_as(str(pdf_path))
         print(f"  📄  PDF → {pdf_path.name}")
-    except Exception as e:
+    except Exception:
         # Try plain requests download as fallback
         try:
-            import requests
             cookies = {c["name"]: c["value"] for c in page.context.cookies()}
-            r = requests.get(url, cookies=cookies, timeout=30, stream=True)
-            pdf_path.write_bytes(r.content)
+            response = requests.get(url, cookies=cookies, timeout=30)
+            response.raise_for_status()
+            content_type = (response.headers.get("content-type") or "").lower()
+            content = response.content
+
+            # Guard against login HTML accidentally saved as .pdf
+            looks_like_pdf = content.startswith(b"%PDF-") or "application/pdf" in content_type
+            if not looks_like_pdf:
+                raise RuntimeError(f"Fallback response is not a PDF (content-type={content_type or 'unknown'})")
+
+            pdf_path.write_bytes(content)
             print(f"  📄  PDF (fallback) → {pdf_path.name}")
         except Exception as e2:
             print(f"  ⚠️  PDF failed: {url} — {e2}")
@@ -249,15 +286,20 @@ def download_pdf(page, url: str):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def crawl(page, seed_urls: list, discover_only: bool):
-    visited:   set  = set()
-    to_visit:  list = list(dict.fromkeys(seed_urls))
+    visited:   set = set()
+    queued:    set = set(dict.fromkeys(seed_urls))
+    to_visit = deque(dict.fromkeys(seed_urls))
     pdf_queue: list = []
+    content_hashes: set[str] = set()
     scraped = 0
+    skipped_duplicate_content = 0
+    nav_failures = 0
 
     print(f"🕷️  Crawling — max {MAX_PAGES} pages, seeds: {len(to_visit)}\n")
 
     while to_visit and scraped < MAX_PAGES:
-        url = to_visit.pop(0)
+        url = to_visit.popleft()
+        queued.discard(url)
         if url in visited:
             continue
         visited.add(url)
@@ -272,11 +314,9 @@ def crawl(page, seed_urls: list, discover_only: bool):
 
         # Navigate
         try:
-            response = page.goto(url, timeout=NAV_TIMEOUT)
-        except PlaywrightTimeoutError:
-            print(f"  ⏰  Timeout: {url}")
-            continue
+            response = fetch_with_retry(page, url)
         except Exception as e:
+            nav_failures += 1
             print(f"  ❌  Error: {url} — {e}")
             continue
 
@@ -317,12 +357,13 @@ def crawl(page, seed_urls: list, discover_only: bool):
             if not href:
                 continue
             norm = normalise_url(href.strip(), current_url)
-            if not norm or norm in visited or norm in to_visit:
+            if not norm or norm in visited or norm in queued:
                 continue
             if is_pdf_url(norm):
                 pdf_queue.append(norm)
             elif same_domain(norm) and not should_skip(norm):
                 to_visit.append(norm)
+                queued.add(norm)
 
         # Convert to Markdown using live DOM text
         title, body = get_page_content(page, current_url)
@@ -340,6 +381,18 @@ def crawl(page, seed_urls: list, discover_only: bool):
         )
         full_doc = header + body
 
+        # Skip duplicate content to reduce noisy retraining data.
+        content_key = hashlib.sha256(body.encode("utf-8", errors="ignore")).hexdigest()
+        if content_key in content_hashes:
+            skipped_duplicate_content += 1
+            print(f"  ↪️  Duplicate content skipped: {title[:60]}")
+            continue
+        content_hashes.add(content_key)
+
+        if len(body.strip()) < MIN_CONTENT:
+            print(f"  ↪️  Too short skipped ({len(body.strip())} chars): {title[:60]}")
+            continue
+
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         stem = sanitise_filename(title)
         filepath = unique_path(OUTPUT_DIR, stem, ".md")
@@ -355,7 +408,13 @@ def crawl(page, seed_urls: list, discover_only: bool):
         for pdf_url in deduped_pdfs:
             download_pdf(page, pdf_url)
 
-    return scraped, len(pdf_queue)
+    return {
+        "pages_scraped": scraped,
+        "pdfs_queued": len(pdf_queue),
+        "visited_urls": len(visited),
+        "nav_failures": nav_failures,
+        "duplicate_skips": skipped_duplicate_content,
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -363,7 +422,7 @@ def crawl(page, seed_urls: list, discover_only: bool):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
-    global MAX_PAGES
+    global MAX_PAGES, MIN_CONTENT
     parser = argparse.ArgumentParser(description="Roehampton Portal Scraper v2")
     parser.add_argument("--headless",   action="store_true",
                         help="Headless mode (requires saved session cookies)")
@@ -371,8 +430,11 @@ def main():
                         help="Print discovered URLs only — do not save files")
     parser.add_argument("--max-pages",  type=int, default=MAX_PAGES,
                         help=f"Maximum pages to scrape (default: {MAX_PAGES})")
+    parser.add_argument("--min-content", type=int, default=MIN_CONTENT,
+                        help="Skip saving pages with body text shorter than this many chars (default: 0)")
     args = parser.parse_args()
     MAX_PAGES = args.max_pages
+    MIN_CONTENT = max(0, args.min_content)
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(
@@ -394,6 +456,18 @@ def main():
         if not had_cookies or not args.headless:
             do_login(page, headless=args.headless)
             save_cookies(context)
+        else:
+            # In headless cookie-reuse mode we still need an explicit navigation;
+            # otherwise the new page remains about:blank.
+            print(f"\n🔁  Reusing saved session cookies. Opening portal: {PORTAL_URL}")
+            try:
+                fetch_with_retry(page, PORTAL_URL)
+                try:
+                    page.wait_for_load_state("networkidle", timeout=12_000)
+                except PlaywrightTimeoutError:
+                    pass
+            except Exception as e:
+                print(f"  ⚠️  Could not open portal in headless mode: {e}")
 
         # After login the user is already on the portal home page.
         # Detect the real domain (may differ from PORTAL_URL due to SSO redirect).
@@ -439,15 +513,18 @@ def main():
                 seeds.append(norm)
 
         print(f"ℹ️   Seeds after domain filter: {len(seeds)}\n")
-        pages_done, pdfs_done = crawl(page, seeds, discover_only=args.discover)
+        stats = crawl(page, seeds, discover_only=args.discover)
 
         save_cookies(context)
         browser.close()
 
     if args.discover:
-        print(f"\n📋  Found {pages_done} pages + {pdfs_done} PDFs to download.")
+        print(f"\n📋  Found {stats['pages_scraped']} pages + {stats['pdfs_queued']} PDFs to download.")
     else:
-        print(f"\n🎉  Done!  {pages_done} pages + {pdfs_done} PDFs.")
+        print(f"\n🎉  Done!  {stats['pages_scraped']} pages + {stats['pdfs_queued']} PDFs.")
+        print(
+            f"ℹ️   Crawl stats: visited={stats['visited_urls']} nav_failures={stats['nav_failures']} duplicate_skips={stats['duplicate_skips']}"
+        )
         print(f"📁  Markdown files: {OUTPUT_DIR}")
         print(f"📁  PDF files:      {PDF_SUBDIR}")
         print(f"\n👉  Upload the files via MyUni Admin → AI Training Studio → Incremental Add")

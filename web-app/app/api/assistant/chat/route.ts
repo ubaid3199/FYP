@@ -1,13 +1,23 @@
-import { getRAGStore } from '@/lib/domains/rag';
+import { getRetrieverStatus, retrieveRagDocuments } from '@/lib/domains/rag/retriever';
+import os from 'node:os';
 
 const MODEL_NAME = process.env.OLLAMA_MODEL || 'gpt-oss:20b';
-const MAX_RECENT_MESSAGES = Number(process.env.CHAT_MAX_RECENT_MESSAGES || 10);
-const MAX_CONTEXT_CHARS = Number(process.env.RAG_MAX_CONTEXT_CHARS || 4500);
-const RAG_RETRIEVAL_K = Number(process.env.RAG_RETRIEVAL_K || 8);
-const RAG_TIMEOUT_MS = Number(process.env.RAG_TIMEOUT_MS || 8000);
+const MAX_RECENT_MESSAGES = Number(process.env.CHAT_MAX_RECENT_MESSAGES || 4);
+const MAX_CONTEXT_CHARS = Number(process.env.RAG_MAX_CONTEXT_CHARS || 2200);
+const RAG_RETRIEVAL_K = Number(process.env.RAG_RETRIEVAL_K || 4);
+const RAG_TIMEOUT_MS = Number(process.env.RAG_TIMEOUT_MS || 2500);
+const RAG_ENABLE_HEALTH_CHECK = process.env.RAG_ENABLE_HEALTH_CHECK === '1';
 const OLLAMA_TEMPERATURE = Number(process.env.OLLAMA_TEMPERATURE || 0.1);
 const OLLAMA_TOP_P = Number(process.env.OLLAMA_TOP_P || 0.9);
-const OLLAMA_NUM_PREDICT = Number(process.env.OLLAMA_NUM_PREDICT || 512);
+const OLLAMA_NUM_PREDICT = Number(process.env.OLLAMA_NUM_PREDICT || 220);
+const OLLAMA_NUM_CTX = Number(process.env.OLLAMA_NUM_CTX || 2048);
+const OLLAMA_NUM_BATCH = Number(process.env.OLLAMA_NUM_BATCH || 256);
+const OLLAMA_NUM_THREAD = Number(
+  process.env.OLLAMA_NUM_THREAD ||
+    Math.max(2, Math.floor((typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length) * 0.9))
+);
+const OLLAMA_NUM_GPU = process.env.OLLAMA_NUM_GPU ? Number(process.env.OLLAMA_NUM_GPU) : undefined;
+const OLLAMA_KEEP_ALIVE = process.env.OLLAMA_KEEP_ALIVE || '30m';
 const MIN_DOC_RELEVANCE = Number(process.env.RAG_MIN_DOC_RELEVANCE || 0.02);
 
 const STOP_WORDS = new Set([
@@ -79,23 +89,36 @@ export async function POST(req: Request) {
 
     // 1. Retrieve Context using Hybrid Search
     console.log(`[MyUni AI] Processing request: "${lastUserMessage.substring(0, 50)}..."`);
-    console.log("[MyUni AI] Getting RAG store...");
-    const ragInitStart = Date.now();
-    const rag = await getRAGStore();
-    const ragInitMs = Date.now() - ragInitStart;
-    console.log("[MyUni AI] RAG store ready.");
+    let retrieverStatus: any = {
+      activePreference: process.env.RAG_RETRIEVER_PROVIDER === 'hybrid' ? 'hybrid' : 'haystack',
+      warning: undefined,
+    };
+
+    if (RAG_ENABLE_HEALTH_CHECK) {
+      console.log("[MyUni AI] Resolving retriever provider...");
+      retrieverStatus = await getRetrieverStatus(Math.min(RAG_TIMEOUT_MS, 2500));
+      if (retrieverStatus.warning) {
+        console.warn(`[MyUni AI] Retriever status warning: ${retrieverStatus.warning}`);
+      }
+    }
     
     let relevantDocs: any[] = [];
+    let retrieverProvider = 'hybrid';
+    let retrieverFallbackUsed = false;
     try {
       console.log("[MyUni AI] Starting retrieval for query:", lastUserMessage);
       const retrievalStart = Date.now();
-      const retrievalPromise = rag.retrieve(lastUserMessage, RAG_RETRIEVAL_K);
-      relevantDocs = await Promise.race([
-        retrievalPromise,
-        new Promise<any[]>((_, reject) => setTimeout(() => reject(new Error("RAG Retrieval Timeout")), RAG_TIMEOUT_MS))
-      ]);
+      const retrieval = await retrieveRagDocuments(lastUserMessage, RAG_RETRIEVAL_K, RAG_TIMEOUT_MS);
+      relevantDocs = retrieval.docs;
+      retrieverProvider = retrieval.provider;
+      retrieverFallbackUsed = retrieval.fallbackUsed;
       const retrievalMs = Date.now() - retrievalStart;
-      console.log(`[MyUni AI] Retrieval finished in ${retrievalMs}ms. Found ${relevantDocs.length} docs.`);
+      if (retrieval.warning) {
+        console.warn(`[MyUni AI] Retriever warning: ${retrieval.warning}`);
+      }
+      console.log(
+        `[MyUni AI] Retrieval finished in ${retrievalMs}ms. Provider=${retrieverProvider} fallback=${retrieverFallbackUsed} docs=${relevantDocs.length}.`
+      );
     } catch (e: any) {
       console.warn("[MyUni AI] RAG Retrieval failed or timed out:", e.message);
     }
@@ -198,15 +221,22 @@ The retrieved evidence is weak for this query.
         model: MODEL_NAME,
         messages: sanitizedMessages,
         stream: true,
+        keep_alive: OLLAMA_KEEP_ALIVE,
         options: {
           temperature: OLLAMA_TEMPERATURE,
           top_p: OLLAMA_TOP_P,
           num_predict: OLLAMA_NUM_PREDICT,
+          num_ctx: OLLAMA_NUM_CTX,
+          num_batch: OLLAMA_NUM_BATCH,
+          num_thread: OLLAMA_NUM_THREAD,
+          ...(Number.isFinite(OLLAMA_NUM_GPU) ? { num_gpu: OLLAMA_NUM_GPU } : {}),
         },
       }),
     });
     console.log(`[MyUni AI] Ollama responded in ${Date.now() - fetchStart}ms. Status: ${ollamaResponse.status}`);
-    console.log(`[MyUni AI] Timing summary: ragInit=${ragInitMs}ms total=${Date.now() - requestStartedAt}ms promptMessages=${recentMessages.length}`);
+    console.log(
+      `[MyUni AI] Timing summary: total=${Date.now() - requestStartedAt}ms promptMessages=${recentMessages.length} retriever=${retrieverProvider} fallback=${retrieverFallbackUsed} preferred=${retrieverStatus.activePreference}`
+    );
 
     if (!ollamaResponse.ok) {
       const errorText = await ollamaResponse.text();
