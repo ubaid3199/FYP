@@ -1,7 +1,10 @@
 import { getRetrieverStatus, retrieveRagDocuments } from '@/lib/domains/rag/retriever';
 import os from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const MODEL_NAME = process.env.OLLAMA_MODEL || 'gpt-oss:20b';
+const DEFAULT_MODEL_NAME = process.env.OLLAMA_MODEL || 'gpt-oss:20b';
+const ALLOWED_CHAT_MODELS = new Set(['gemma3:1b', 'gemma3:latest', 'gemma4:e2b']);
 const MAX_RECENT_MESSAGES = Number(process.env.CHAT_MAX_RECENT_MESSAGES || 4);
 const MAX_CONTEXT_CHARS = Number(process.env.RAG_MAX_CONTEXT_CHARS || 2200);
 const RAG_RETRIEVAL_K = Number(process.env.RAG_RETRIEVAL_K || 4);
@@ -19,6 +22,10 @@ const OLLAMA_NUM_THREAD = Number(
 const OLLAMA_NUM_GPU = process.env.OLLAMA_NUM_GPU ? Number(process.env.OLLAMA_NUM_GPU) : undefined;
 const OLLAMA_KEEP_ALIVE = process.env.OLLAMA_KEEP_ALIVE || '30m';
 const MIN_DOC_RELEVANCE = Number(process.env.RAG_MIN_DOC_RELEVANCE || 0.02);
+const PDF_SOURCE_MAP_PATH = path.join(process.cwd(), '..', 'pdf files', 'scraped', 'pdfs', '_source_map.json');
+
+let cachedPdfSourceByNormName: Record<string, string> | null = null;
+let cachedPdfSourceMapMtimeMs = 0;
 
 const STOP_WORDS = new Set([
   'the', 'and', 'for', 'with', 'that', 'this', 'from', 'have', 'your', 'what', 'when', 'where', 'which',
@@ -80,12 +87,149 @@ function isActionWorkflowQuery(query: string) {
   return /(book|reserve|ticket|raise|contact|reach|open|opening|hours|admission|apply|grade|marks|cost of living|finance|bursary|support)/.test(q);
 }
 
+function isContactDetailQuery(query: string) {
+  const q = cleanText(query).toLowerCase();
+  return /(email|e-mail|phone|telephone|tel|contact number|contact details)/.test(q);
+}
+
+function isSourceFollowUpQuery(query: string) {
+  const q = cleanText(query).toLowerCase();
+  return /(what is the source|what'?s the source|source\??|which source|citation|where did you get that|where is that from)/.test(q);
+}
+
+function isFactualDetailQuery(query: string) {
+  const q = cleanText(query).toLowerCase();
+  return /(email|e-mail|phone|telephone|tel|contact|opening|hours|deadline|date|time|location|address|link|url|website|source|resource|reference)/.test(q);
+}
+
+function sourceLooksRelevant(source: string, queryTerms: string[]) {
+  const normalizedSource = cleanText(source).toLowerCase();
+  const meaningfulTerms = queryTerms.filter((term) => term.length >= 4);
+  if (meaningfulTerms.length === 0) return true;
+  return meaningfulTerms.some((term) => normalizedSource.includes(term));
+}
+
+function isHttpSource(source: string) {
+  return /^https?:\/\//i.test(cleanText(source));
+}
+
+function normalizeFileNameForMatch(value: string) {
+  return cleanText(value)
+    .toLowerCase()
+    .replace(/\.[a-z0-9]+$/i, '')
+    .replace(/_\d+$/i, '')
+    .replace(/[_\-]+/g, ' ')
+    .replace(/[^a-z0-9\s]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildPdfSourceMapIndexIfNeeded() {
+  let mtimeMs = 0;
+  try {
+    mtimeMs = fs.statSync(PDF_SOURCE_MAP_PATH).mtimeMs;
+  } catch {
+    cachedPdfSourceByNormName = {};
+    cachedPdfSourceMapMtimeMs = 0;
+    return;
+  }
+
+  if (cachedPdfSourceByNormName && cachedPdfSourceMapMtimeMs === mtimeMs) return;
+
+  const nextIndex: Record<string, string> = {};
+  try {
+    const raw = fs.readFileSync(PDF_SOURCE_MAP_PATH, 'utf-8');
+    const parsed = JSON.parse(raw) as Record<string, string>;
+
+    for (const [key, url] of Object.entries(parsed || {})) {
+      if (!url || !isHttpSource(url)) continue;
+      const base = path.basename(String(key));
+      const norm = normalizeFileNameForMatch(base);
+      if (norm && !nextIndex[norm]) nextIndex[norm] = url;
+    }
+  } catch {
+    // Keep index empty if parsing fails.
+  }
+
+  cachedPdfSourceByNormName = nextIndex;
+  cachedPdfSourceMapMtimeMs = mtimeMs;
+}
+
+function resolveSourceUrl(source: string) {
+  const clean = cleanText(source);
+  if (!clean) return '';
+  if (isHttpSource(clean)) return clean;
+
+  buildPdfSourceMapIndexIfNeeded();
+  const index = cachedPdfSourceByNormName || {};
+
+  const base = path.basename(clean.replace(/\\/g, '/'));
+  const norm = normalizeFileNameForMatch(base);
+  if (norm && index[norm]) return index[norm];
+
+  return '';
+}
+
+function hasResolvedHttpSource(source: string) {
+  return Boolean(resolveSourceUrl(source));
+}
+
+function collectUniqueSources(docs: any[], limit = 5) {
+  const seen = new Set<string>();
+  const sources: string[] = [];
+
+  for (const doc of docs) {
+    const rawSource = cleanText(doc?.metadata?.source || 'unknown');
+    const sourceUrl = resolveSourceUrl(rawSource);
+    if (!sourceUrl || seen.has(sourceUrl)) continue;
+    seen.add(sourceUrl);
+    sources.push(sourceUrl);
+    if (sources.length >= limit) break;
+  }
+
+  return sources;
+}
+
+function buildSourcesAppendixFromRanked(
+  rankedDocs: Array<{ doc: any; score: number }>,
+  factualDetailQuery: boolean,
+  limit = 5
+) {
+  const minSourceScore = factualDetailQuery ? 0.65 : 0.45;
+  const docs = rankedDocs
+    .filter((entry) => entry.score >= minSourceScore)
+    .slice(0, limit)
+    .map((entry) => entry.doc);
+
+  const sources = collectUniqueSources(docs, limit);
+  if (sources.length === 0) {
+    if (rankedDocs.length === 0) return '';
+    return `\n\nSources:\n- Not confirmed in docs (no verified URL source available)`;
+  }
+  return `\n\nSources:\n${sources.map((source) => `- ${source}`).join('\n')}`;
+}
+
+function singleMessageStreamResponse(message: string) {
+  const payload = JSON.stringify({ message: { role: 'assistant', content: message }, done: true });
+  return new Response(`${payload}\n`, {
+    headers: { 'Content-Type': 'text/event-stream' },
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const requestStartedAt = Date.now();
     const body = await req.json();
     const { messages, userId, isRestricted } = body;
+    const requestedModel = typeof body?.model === 'string' ? body.model : '';
+    const modelName = ALLOWED_CHAT_MODELS.has(requestedModel) ? requestedModel : DEFAULT_MODEL_NAME;
     const lastUserMessage = messages[messages.length - 1]?.content || "";
+    const sourceFollowUpQuery = isSourceFollowUpQuery(lastUserMessage);
+    const userMessages = Array.isArray(messages)
+      ? messages.filter((m: any) => m?.role === 'user' && typeof m?.content === 'string').map((m: any) => m.content)
+      : [];
+    const priorUserMessage = userMessages.length >= 2 ? userMessages[userMessages.length - 2] : '';
+    const retrievalQuery = sourceFollowUpQuery && priorUserMessage ? priorUserMessage : lastUserMessage;
 
     // 1. Retrieve Context using Hybrid Search
     console.log(`[MyUni AI] Processing request: "${lastUserMessage.substring(0, 50)}..."`);
@@ -106,9 +250,9 @@ export async function POST(req: Request) {
     let retrieverProvider = 'hybrid';
     let retrieverFallbackUsed = false;
     try {
-      console.log("[MyUni AI] Starting retrieval for query:", lastUserMessage);
+      console.log("[MyUni AI] Starting retrieval for query:", retrievalQuery);
       const retrievalStart = Date.now();
-      const retrieval = await retrieveRagDocuments(lastUserMessage, RAG_RETRIEVAL_K, RAG_TIMEOUT_MS);
+      const retrieval = await retrieveRagDocuments(retrievalQuery, RAG_RETRIEVAL_K, RAG_TIMEOUT_MS);
       relevantDocs = retrieval.docs;
       retrieverProvider = retrieval.provider;
       retrieverFallbackUsed = retrieval.fallbackUsed;
@@ -123,7 +267,7 @@ export async function POST(req: Request) {
       console.warn("[MyUni AI] RAG Retrieval failed or timed out:", e.message);
     }
 
-    const queryTerms = extractQueryTerms(lastUserMessage);
+    const queryTerms = extractQueryTerms(retrievalQuery);
     const rankedDocs = relevantDocs
       .map((doc: any) => ({
         doc,
@@ -131,21 +275,27 @@ export async function POST(req: Request) {
       }))
       .sort((a, b) => b.score - a.score);
 
+    const minRequiredRelevance = sourceFollowUpQuery
+      ? Math.max(MIN_DOC_RELEVANCE, 0.85)
+      : MIN_DOC_RELEVANCE;
+
     const filteredDocs = rankedDocs
-      .filter((entry) => entry.score >= MIN_DOC_RELEVANCE || queryTerms.length === 0)
+      .filter((entry) => entry.score >= minRequiredRelevance || queryTerms.length === 0)
       .slice(0, 4)
       .map((entry) => entry.doc);
     const fallbackDocs = rankedDocs.slice(0, 4).map((entry) => entry.doc);
+    const topRelevanceScore = rankedDocs[0]?.score ?? 0;
     const hasRetrievedDocs = relevantDocs.length > 0;
     const docsForContext = filteredDocs.length >= 2
       ? filteredDocs
       : [...filteredDocs, ...fallbackDocs].slice(0, 4);
-    const weakContext = !hasRetrievedDocs || docsForContext.length === 0;
+    const weakContext = !hasRetrievedDocs || docsForContext.length === 0 || (queryTerms.length > 0 && topRelevanceScore < 0.75);
 
     const contextChunks: string[] = [];
     let currentContextChars = 0;
     for (let i = 0; i < docsForContext.length; i++) {
-      const source = docsForContext[i]?.metadata?.source || 'unknown';
+      const rawSource = docsForContext[i]?.metadata?.source || 'unknown';
+      const source = resolveSourceUrl(rawSource) || 'unverified-local-source';
       const clipped = cleanText((docsForContext[i]?.pageContent || '').slice(0, 1500));
       const nextChunk = `[Source ${i + 1} | ${source}]:\n${clipped}`;
       if (currentContextChars + nextChunk.length > MAX_CONTEXT_CHARS) break;
@@ -159,12 +309,42 @@ export async function POST(req: Request) {
       contextText = "No specific university documentation found for this query.";
     }
 
-    if (weakContext) {
+    if (weakContext && !sourceFollowUpQuery) {
       const fallbackGuidance = fallbackGuidanceForQuery(lastUserMessage);
       contextText += `\n\n[Source General Guidance]:\n${fallbackGuidance}`;
     }
 
     const actionWorkflowQuery = isActionWorkflowQuery(lastUserMessage);
+    const contactDetailQuery = isContactDetailQuery(lastUserMessage);
+    const factualDetailQuery = isFactualDetailQuery(lastUserMessage);
+
+    const trustedSourceDocs = rankedDocs
+      .filter((entry) => entry.score >= 0.9)
+      .filter((entry) => sourceLooksRelevant(entry.doc?.metadata?.source || '', queryTerms))
+      .filter((entry) => hasResolvedHttpSource(entry.doc?.metadata?.source || ''))
+      .slice(0, 3)
+      .map((entry) => entry.doc);
+
+    if (sourceFollowUpQuery) {
+      if (trustedSourceDocs.length === 0 || weakContext) {
+        return singleMessageStreamResponse(
+          'Not confirmed in docs. I do not have a verified source for that previous claim. Please check Student Services, Security, or the official university directory for a confirmed contact resource.'
+        );
+      }
+
+      const lines = trustedSourceDocs.map((doc: any, index: number) => {
+        const source = resolveSourceUrl(doc?.metadata?.source || '') || 'unknown';
+        return `- [Source ${index + 1} | ${source}]`;
+      });
+
+      return singleMessageStreamResponse(`Verified sources:\n${lines.join('\n')}`);
+    }
+
+    if (factualDetailQuery && weakContext) {
+      return singleMessageStreamResponse(
+        'Not confirmed in docs. I cannot verify a reliable factual answer from the retrieved documents. Please use the official university directory, Student Services, or campus Security to confirm.'
+      );
+    }
 
     let systemPrompt = `You are MyUni AI, a precise virtual assistant for university students.
 
@@ -173,12 +353,13 @@ export async function POST(req: Request) {
   2) Do not completely invent dates, policies, rooms, deadlines, names, or links.
   3) If context is insufficient, provide a generally helpful answer based on student life and your knowledge. Do not apologize excessively.
   4) Keep answers concise and practical. Start with a direct answer sentence.
-  5) When using context facts, cite source tags like [Source 1].
+  5) When using context facts, cite full source labels from CONTEXT, for example [Source 1 | path/to/file].
   6) Never return an apology-only refusal. Always include at least one actionable next step.
   7) If CONTEXT includes the requested fact, state it directly, then give a short supporting detail.
   8) Do not ask follow-up questions unless the user asked something ambiguous and CONTEXT is insufficient.
   9) Assist the user naturally. You may be conversational without being overly verbose.
   10) Prefer action-first output: exact steps the student can do now.
+  11) Never fabricate or guess source paths/file names. Only reference source tags that actually appear in CONTEXT.
 
   CONTEXT:
   ${contextText}`;
@@ -203,8 +384,24 @@ The retrieved evidence is weak for this query.
     You may answer general questions, but for university details prioritize CONTEXT and cite sources.`;
     }
 
+    if (contactDetailQuery) {
+      systemPrompt += `\n\n[CONTACT DETAIL SAFETY]
+For email addresses, phone numbers, and contact details:
+- Only provide a specific detail if it appears verbatim in CONTEXT.
+- If not present verbatim, say \"Not confirmed in docs\" and provide safe next steps (security desk, Student Services, official directory/helpdesk).
+- Do not infer contact details from weak or loosely related context.`;
+    }
+
+    if (sourceFollowUpQuery) {
+      systemPrompt += `\n\n[SOURCE FOLLOW-UP SAFETY]
+The user is asking for the source of a previous answer.
+- If CONTEXT is weak or no reliable source appears, respond: \"Not confirmed in docs.\"
+- Do not output or guess file paths, document names, or source tags unless they are strongly relevant in CONTEXT.
+- Never cite unrelated academic documents for operational contact/support questions.`;
+    }
+
     // 3. Call Ollama chat API directly (v2 spec) and stream response
-    console.log(`[MyUni AI] Sending request to Ollama: http://127.0.0.1:11434/api/chat with model ${MODEL_NAME}`);
+    console.log(`[MyUni AI] Sending request to Ollama: http://127.0.0.1:11434/api/chat with model ${modelName}`);
     
     // Sanitize messages to only include role and content (some Ollama versions are strict)
     const recentMessages = messages.slice(-MAX_RECENT_MESSAGES);
@@ -218,7 +415,7 @@ The retrieved evidence is weak for this query.
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: MODEL_NAME,
+        model: modelName,
         messages: sanitizedMessages,
         stream: true,
         keep_alive: OLLAMA_KEEP_ALIVE,
@@ -244,14 +441,88 @@ The retrieved evidence is weak for this query.
       throw new Error(`Ollama API error: ${ollamaResponse.statusText}`);
     }
 
-    // Return the raw streaming response to the client
-    return new Response(ollamaResponse.body, {
+    const sourcesAppendix = buildSourcesAppendixFromRanked(rankedDocs, factualDetailQuery);
+
+    if (!ollamaResponse.body || !sourcesAppendix) {
+      return new Response(ollamaResponse.body, {
+        headers: { 'Content-Type': 'text/event-stream' },
+      });
+    }
+
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    const sourceLine = `${JSON.stringify({ message: { role: 'assistant', content: sourcesAppendix }, done: false })}\n`;
+
+    const mergedStream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const reader = ollamaResponse.body!.getReader();
+        let buffer = '';
+        let sourceInjected = false;
+
+        const emitLine = (line: string) => {
+          controller.enqueue(encoder.encode(`${line}\n`));
+        };
+
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const rawLine of lines) {
+              const line = rawLine.trim();
+              if (!line) continue;
+
+              let parsed: any = null;
+              try {
+                parsed = JSON.parse(line);
+              } catch {
+                emitLine(line);
+                continue;
+              }
+
+              if (!sourceInjected && parsed?.done === true) {
+                controller.enqueue(encoder.encode(sourceLine));
+                sourceInjected = true;
+              }
+
+              emitLine(line);
+            }
+          }
+
+          if (buffer.trim()) {
+            const line = buffer.trim();
+            let parsed: any = null;
+            try {
+              parsed = JSON.parse(line);
+            } catch {
+              emitLine(line);
+            }
+
+            if (parsed) {
+              if (!sourceInjected && parsed?.done === true) {
+                controller.enqueue(encoder.encode(sourceLine));
+                sourceInjected = true;
+              }
+              emitLine(line);
+            }
+          }
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(mergedStream, {
       headers: { 'Content-Type': 'text/event-stream' },
     });
   } catch (error: any) {
     console.error("Chat API Error:", error);
-    return new Response(JSON.stringify({ 
-      error: "AI Generation failed. Ensure Ollama is running locally." 
-    }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return singleMessageStreamResponse(
+      'Not confirmed in docs. I could not complete the model request right now. Please try again in a moment, or switch to a lighter model like gemma3:1b.'
+    );
   }
 }

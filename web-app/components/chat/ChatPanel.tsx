@@ -23,7 +23,16 @@ export function ChatPanel({
   maxWidth,
   onWidthChange,
 }: ChatPanelProps) {
-  const { messages, isLoading, isRestricted, setIsRestricted, sendMessage, clearChat } = useChat();
+  const {
+    messages,
+    isLoading,
+    isRestricted,
+    setIsRestricted,
+    selectedModel,
+    setSelectedModel,
+    sendMessage,
+    clearChat,
+  } = useChat();
   const { session, updateSession } = useSession();
   const { users } = useUserStore();
   const [input, setInput] = useState('');
@@ -138,6 +147,29 @@ export function ChatPanel({
               </div>
             </div>
           </div>
+
+          <div className="h-4 w-px bg-white/10" />
+
+          <div className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1.5 border border-white/10">
+            <label htmlFor="chat-model-select" className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Model
+            </label>
+            <select
+              id="chat-model-select"
+              value={selectedModel}
+              onChange={(e) =>
+                setSelectedModel(
+                  e.target.value as 'gemma3:1b' | 'gemma3:latest' | 'gemma4:e2b'
+                )
+              }
+              disabled={isLoading}
+              className="rounded-md border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold text-slate-200 outline-none focus:border-blue-400/60 disabled:opacity-50"
+            >
+              <option value="gemma3:1b">gemma3:1b</option>
+              <option value="gemma3:latest">gemma3:latest</option>
+              <option value="gemma4:e2b">gemma4:e2b</option>
+            </select>
+          </div>
         </div>
 
         <button
@@ -166,6 +198,11 @@ export function ChatPanel({
                   ? 'bg-blue-600 text-white rounded-tr-none' 
                   : 'bg-white/10 text-slate-100 rounded-tl-none border border-white/5'
               }`}>
+                {m.role === 'assistant' && m.model && (
+                  <div className="mb-2 inline-flex items-center rounded-full border border-cyan-400/40 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-cyan-300">
+                    {m.model}
+                  </div>
+                )}
                 {m.content ? (
                   m.role === 'assistant' ? (
                     <div className="chat-markdown">

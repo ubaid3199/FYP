@@ -76,6 +76,14 @@ interface RetrievalMetrics {
 
 const VECTOR_STORE_PATH = path.join(process.cwd(), "..", "hybrid_store.json");
 
+function getStoreMtimeMs() {
+  try {
+    return fs.statSync(VECTOR_STORE_PATH).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
 function stableHash(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -523,10 +531,19 @@ export class HybridRAG {
 // Global Singleton for Next.js App Router (Prevents reloading the store on every request)
 let globalRagStore: HybridRAG | null = null;
 let globalLoadingPromise: Promise<HybridRAG> | null = null;
+let globalStoreLoadedAtMtimeMs = 0;
 
 export async function getRAGStore() {
   console.log("[MyUni RAG] getRAGStore called. Store exists:", !!globalRagStore, "Loading:", !!globalLoadingPromise);
-  if (globalRagStore) return globalRagStore;
+  if (globalRagStore) {
+    const currentStoreMtime = getStoreMtimeMs();
+    if (currentStoreMtime <= globalStoreLoadedAtMtimeMs) {
+      return globalRagStore;
+    }
+
+    console.log("[MyUni RAG] Detected updated hybrid_store.json on disk. Reloading store...");
+    globalRagStore = null;
+  }
   if (globalLoadingPromise) return globalLoadingPromise;
 
   globalLoadingPromise = (async () => {
@@ -540,11 +557,14 @@ export async function getRAGStore() {
       await store.loadFromDisk();
       console.log("[MyUni RAG] Store initialized successfully.");
       globalRagStore = store;
+      globalStoreLoadedAtMtimeMs = getStoreMtimeMs();
       return store;
     } catch (err) {
       console.error("[MyUni RAG] Initialization FAILED:", err);
       globalLoadingPromise = null;
       throw err;
+    } finally {
+      globalLoadingPromise = null;
     }
   })();
 

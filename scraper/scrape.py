@@ -41,6 +41,7 @@ PASSWORD     = os.getenv("PORTAL_PASSWORD", "")
 SCRIPT_DIR   = Path(__file__).parent
 OUTPUT_DIR   = SCRIPT_DIR.parent / "pdf files" / "scraped"
 PDF_SUBDIR   = OUTPUT_DIR / "pdfs"
+PDF_SOURCE_MAP_FILE = PDF_SUBDIR / "_source_map.json"
 COOKIES_FILE = SCRIPT_DIR / "session_cookies.json"
 
 # Pages / URL schemes we never want
@@ -252,7 +253,7 @@ def do_login(page, headless: bool):
 # PDF download
 # ─────────────────────────────────────────────────────────────────────────────
 
-def download_pdf(page, url: str):
+def download_pdf(page, url: str, source_map: dict[str, str]):
     PDF_SUBDIR.mkdir(parents=True, exist_ok=True)
     stem = sanitise_filename(urllib.parse.unquote(url.split("/")[-1]).replace(".pdf", ""))
     pdf_path = unique_path(PDF_SUBDIR, stem, ".pdf")
@@ -260,6 +261,8 @@ def download_pdf(page, url: str):
         with page.expect_download(timeout=30_000) as dl_info:
             fetch_with_retry(page, url)
         dl_info.value.save_as(str(pdf_path))
+        rel_pdf_path = pdf_path.relative_to(OUTPUT_DIR).as_posix()
+        source_map[rel_pdf_path] = url
         print(f"  📄  PDF → {pdf_path.name}")
     except Exception:
         # Try plain requests download as fallback
@@ -276,9 +279,26 @@ def download_pdf(page, url: str):
                 raise RuntimeError(f"Fallback response is not a PDF (content-type={content_type or 'unknown'})")
 
             pdf_path.write_bytes(content)
+            rel_pdf_path = pdf_path.relative_to(OUTPUT_DIR).as_posix()
+            source_map[rel_pdf_path] = url
             print(f"  📄  PDF (fallback) → {pdf_path.name}")
         except Exception as e2:
             print(f"  ⚠️  PDF failed: {url} — {e2}")
+
+
+def load_existing_pdf_source_map() -> dict[str, str]:
+    """Load previously saved PDF source map so incremental crawls keep old mappings."""
+    if not PDF_SOURCE_MAP_FILE.exists():
+        return {}
+    try:
+        raw = PDF_SOURCE_MAP_FILE.read_text(encoding="utf-8")
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            # Keep only string-to-string entries to avoid malformed rows.
+            return {str(k): str(v) for k, v in parsed.items() if isinstance(k, str) and isinstance(v, str)}
+    except Exception:
+        pass
+    return {}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -290,6 +310,7 @@ def crawl(page, seed_urls: list, discover_only: bool):
     queued:    set = set(dict.fromkeys(seed_urls))
     to_visit = deque(dict.fromkeys(seed_urls))
     pdf_queue: list = []
+    pdf_source_map: dict[str, str] = load_existing_pdf_source_map()
     content_hashes: set[str] = set()
     scraped = 0
     skipped_duplicate_content = 0
@@ -402,11 +423,16 @@ def crawl(page, seed_urls: list, discover_only: bool):
         print(f"  [{scraped}/{MAX_PAGES}] {title[:60]}  ({size_kb} kB)")
 
     # Download PDFs
-    if not discover_only and pdf_queue:
+    if not discover_only:
         deduped_pdfs = list(dict.fromkeys(pdf_queue))
-        print(f"\n📄  Downloading {len(deduped_pdfs)} PDF(s)…")
-        for pdf_url in deduped_pdfs:
-            download_pdf(page, pdf_url)
+        if deduped_pdfs:
+            print(f"\n📄  Downloading {len(deduped_pdfs)} PDF(s)…")
+            for pdf_url in deduped_pdfs:
+                download_pdf(page, pdf_url, pdf_source_map)
+
+        PDF_SUBDIR.mkdir(parents=True, exist_ok=True)
+        PDF_SOURCE_MAP_FILE.write_text(json.dumps(pdf_source_map, indent=2), encoding="utf-8")
+        print(f"  🗂️  PDF source map → {PDF_SOURCE_MAP_FILE}")
 
     return {
         "pages_scraped": scraped,
