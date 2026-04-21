@@ -22,6 +22,15 @@ const OLLAMA_NUM_THREAD = Number(
 const OLLAMA_NUM_GPU = process.env.OLLAMA_NUM_GPU ? Number(process.env.OLLAMA_NUM_GPU) : undefined;
 const OLLAMA_KEEP_ALIVE = process.env.OLLAMA_KEEP_ALIVE || '30m';
 const MIN_DOC_RELEVANCE = Number(process.env.RAG_MIN_DOC_RELEVANCE || 0.02);
+const MITIGATING_CIRCUMSTANCES_PORTAL_URL =
+  process.env.MITIGATING_CIRCUMSTANCES_PORTAL_URL || 'https://rulattendance.seats.cloud/angular/#/me';
+const LEGACY_MITIGATING_LINKS = (
+  process.env.MITIGATING_CIRCUMSTANCES_LEGACY_LINKS ||
+  'https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/mitigating-circumstances.aspx,https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/Types-of-mitigating-circumstances-requests.aspx'
+)
+  .split(',')
+  .map((value) => cleanText(value))
+  .filter((value) => isHttpSource(value));
 const PDF_SOURCE_MAP_PATH = path.join(process.cwd(), '..', 'pdf files', 'scraped', 'pdfs', '_source_map.json');
 
 let cachedPdfSourceByNormName: Record<string, string> | null = null;
@@ -57,6 +66,26 @@ function docRelevanceScore(queryTerms: string[], text: string) {
     if (haystack.includes(term)) matches += 1;
   }
   return matches / queryTerms.length;
+}
+
+function extractMostRecentYear(value: string) {
+  const matches = value.match(/\b(20\d{2})\b/g) || [];
+  const years = matches
+    .map((item) => Number(item))
+    .filter((year) => Number.isFinite(year) && year >= 2000 && year <= 2100);
+  if (years.length === 0) return 0;
+  return Math.max(...years);
+}
+
+function docRecencyScore(doc: any) {
+  const source = cleanText(doc?.metadata?.source || '');
+  const pageContent = cleanText((doc?.pageContent || '').slice(0, 2500));
+  const sourceYear = extractMostRecentYear(source);
+  const contentYear = extractMostRecentYear(pageContent);
+  const year = Math.max(sourceYear, contentYear);
+  if (!year) return 0;
+  // Normalize recent years to a 0..1 range where newer years rank first.
+  return Math.min(1, Math.max(0, (year - 2018) / 10));
 }
 
 function fallbackGuidanceForQuery(query: string) {
@@ -97,9 +126,62 @@ function isSourceFollowUpQuery(query: string) {
   return /(what is the source|what'?s the source|source\??|which source|citation|where did you get that|where is that from)/.test(q);
 }
 
+function isSourceRequestedQuery(query: string) {
+  const q = cleanText(query).toLowerCase();
+  return /(source|sources|citation|citations|reference|references|where.*from|show me (the )?source|proof)/.test(q);
+}
+
+function isSmallTalkQuery(query: string) {
+  const q = cleanText(query).toLowerCase();
+  return /^(hi|hello|hey|thanks|thank you|ok|okay|cool|great)\b/.test(q) || /how are you/.test(q);
+}
+
 function isFactualDetailQuery(query: string) {
   const q = cleanText(query).toLowerCase();
   return /(email|e-mail|phone|telephone|tel|contact|opening|hours|deadline|date|time|location|address|link|url|website|source|resource|reference)/.test(q);
+}
+
+function isMitigatingCircumstancesPortalQuery(query: string) {
+  const q = cleanText(query).toLowerCase();
+  const aboutMitigating = /(mitigat|mitigating circumstances|miligating|extenuating)/.test(q);
+  const asksPortal = /(portal|link|url|page|apply|submission|submit)/.test(q);
+  return aboutMitigating && asksPortal;
+}
+
+function extractUrlsFromText(text: string) {
+  const matches = cleanText(text).match(/https?:\/\/[^\s)\]]+/gi) || [];
+  return matches.map((item) => item.replace(/[.,;]+$/, ''));
+}
+
+function buildRelatedLinksFormsAppendixFromRanked(
+  rankedDocs: Array<{ doc: any; score: number; recency: number }>,
+  limit = 5
+) {
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  const minScore = 0.45;
+
+  for (const entry of rankedDocs) {
+    if (entry.score < minScore) continue;
+
+    const sourceUrl = resolveSourceUrl(entry.doc?.metadata?.source || '');
+    const contentUrls = extractUrlsFromText(entry.doc?.pageContent || '');
+    const candidates = sourceUrl ? [sourceUrl, ...contentUrls] : contentUrls;
+
+    for (const url of candidates) {
+      if (!isHttpSource(url) || seen.has(url)) continue;
+      seen.add(url);
+
+      const isFormLike = /(form|apply|application|portal|submit|request|booking|book)/i.test(url);
+      lines.push(`- ${isFormLike ? 'Form' : 'Link'}: ${url}`);
+      if (lines.length >= limit) break;
+    }
+
+    if (lines.length >= limit) break;
+  }
+
+  if (lines.length === 0) return '';
+  return `\n\nHelpful links/forms:\n${lines.join('\n')}`;
 }
 
 function sourceLooksRelevant(source: string, queryTerms: string[]) {
@@ -191,7 +273,7 @@ function collectUniqueSources(docs: any[], limit = 5) {
 }
 
 function buildSourcesAppendixFromRanked(
-  rankedDocs: Array<{ doc: any; score: number }>,
+  rankedDocs: Array<{ doc: any; score: number; recency: number }>,
   factualDetailQuery: boolean,
   limit = 5
 ) {
@@ -225,11 +307,33 @@ export async function POST(req: Request) {
     const modelName = ALLOWED_CHAT_MODELS.has(requestedModel) ? requestedModel : DEFAULT_MODEL_NAME;
     const lastUserMessage = messages[messages.length - 1]?.content || "";
     const sourceFollowUpQuery = isSourceFollowUpQuery(lastUserMessage);
+    const sourceRequestedQuery = isSourceRequestedQuery(lastUserMessage);
+    const mitigatingPortalQuery = isMitigatingCircumstancesPortalQuery(lastUserMessage);
     const userMessages = Array.isArray(messages)
       ? messages.filter((m: any) => m?.role === 'user' && typeof m?.content === 'string').map((m: any) => m.content)
       : [];
     const priorUserMessage = userMessages.length >= 2 ? userMessages[userMessages.length - 2] : '';
     const retrievalQuery = sourceFollowUpQuery && priorUserMessage ? priorUserMessage : lastUserMessage;
+
+    if (mitigatingPortalQuery) {
+      const helpfulLines = [
+        `- Form: ${MITIGATING_CIRCUMSTANCES_PORTAL_URL}`,
+        ...LEGACY_MITIGATING_LINKS.map((link) => `- Link: ${link}`),
+      ];
+
+      if (sourceRequestedQuery || sourceFollowUpQuery) {
+        const sources = [MITIGATING_CIRCUMSTANCES_PORTAL_URL, ...LEGACY_MITIGATING_LINKS]
+          .map((link) => `- ${link}`)
+          .join('\n');
+        return singleMessageStreamResponse(
+          `Use this Mitigating Circumstances portal link (latest): ${MITIGATING_CIRCUMSTANCES_PORTAL_URL}\n\nSources:\n${sources}`
+        );
+      }
+
+      return singleMessageStreamResponse(
+        `Use this Mitigating Circumstances portal link (latest): ${MITIGATING_CIRCUMSTANCES_PORTAL_URL}\n\nHelpful links/forms:\n${helpfulLines.join('\n')}`
+      );
+    }
 
     // 1. Retrieve Context using Hybrid Search
     console.log(`[MyUni AI] Processing request: "${lastUserMessage.substring(0, 50)}..."`);
@@ -272,8 +376,9 @@ export async function POST(req: Request) {
       .map((doc: any) => ({
         doc,
         score: docRelevanceScore(queryTerms, doc?.pageContent || ''),
+        recency: docRecencyScore(doc),
       }))
-      .sort((a, b) => b.score - a.score);
+      .sort((a, b) => (b.score - a.score) || (b.recency - a.recency));
 
     const minRequiredRelevance = sourceFollowUpQuery
       ? Math.max(MIN_DOC_RELEVANCE, 0.85)
@@ -311,7 +416,7 @@ export async function POST(req: Request) {
 
     if (weakContext && !sourceFollowUpQuery) {
       const fallbackGuidance = fallbackGuidanceForQuery(lastUserMessage);
-      contextText += `\n\n[Source General Guidance]:\n${fallbackGuidance}`;
+      contextText += `\n\n[General Guidance]:\n${fallbackGuidance}`;
     }
 
     const actionWorkflowQuery = isActionWorkflowQuery(lastUserMessage);
@@ -353,13 +458,14 @@ export async function POST(req: Request) {
   2) Do not completely invent dates, policies, rooms, deadlines, names, or links.
   3) If context is insufficient, provide a generally helpful answer based on student life and your knowledge. Do not apologize excessively.
   4) Keep answers concise and practical. Start with a direct answer sentence.
-  5) When using context facts, cite full source labels from CONTEXT, for example [Source 1 | path/to/file].
+  5) Only provide source/citation labels when the user explicitly asks for source/citation.
   6) Never return an apology-only refusal. Always include at least one actionable next step.
   7) If CONTEXT includes the requested fact, state it directly, then give a short supporting detail.
   8) Do not ask follow-up questions unless the user asked something ambiguous and CONTEXT is insufficient.
   9) Assist the user naturally. You may be conversational without being overly verbose.
   10) Prefer action-first output: exact steps the student can do now.
   11) Never fabricate or guess source paths/file names. Only reference source tags that actually appear in CONTEXT.
+  12) If the retrieved context includes relevant links or forms for the user's request, include them for the user.
 
   CONTEXT:
   ${contextText}`;
@@ -398,6 +504,10 @@ The user is asking for the source of a previous answer.
 - If CONTEXT is weak or no reliable source appears, respond: \"Not confirmed in docs.\"
 - Do not output or guess file paths, document names, or source tags unless they are strongly relevant in CONTEXT.
 - Never cite unrelated academic documents for operational contact/support questions.`;
+    } else if (!sourceRequestedQuery) {
+      systemPrompt += `\n\n[CITATION DISPLAY]
+Do not include citations, source tags, or a Sources section unless the user explicitly asks for sources/citations.`;
+      systemPrompt += `\nFor normal answers where links/forms are useful, include them under a heading exactly named "Helpful links/forms:" and do NOT include a "Sources:" heading.`;
     }
 
     // 3. Call Ollama chat API directly (v2 spec) and stream response
@@ -441,9 +551,16 @@ The user is asking for the source of a previous answer.
       throw new Error(`Ollama API error: ${ollamaResponse.statusText}`);
     }
 
-    const sourcesAppendix = buildSourcesAppendixFromRanked(rankedDocs, factualDetailQuery);
+    const shouldAppendSources = sourceRequestedQuery || sourceFollowUpQuery;
+    const sourcesAppendix = shouldAppendSources
+      ? buildSourcesAppendixFromRanked(rankedDocs, factualDetailQuery)
+      : '';
+    const relatedLinksAppendix = !sourceRequestedQuery && !sourceFollowUpQuery && !isSmallTalkQuery(lastUserMessage)
+      ? buildRelatedLinksFormsAppendixFromRanked(rankedDocs)
+      : '';
+    const appendedTail = `${relatedLinksAppendix}${sourcesAppendix}`;
 
-    if (!ollamaResponse.body || !sourcesAppendix) {
+    if (!ollamaResponse.body || !appendedTail) {
       return new Response(ollamaResponse.body, {
         headers: { 'Content-Type': 'text/event-stream' },
       });
@@ -451,7 +568,7 @@ The user is asking for the source of a previous answer.
 
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
-    const sourceLine = `${JSON.stringify({ message: { role: 'assistant', content: sourcesAppendix }, done: false })}\n`;
+    const sourceLine = `${JSON.stringify({ message: { role: 'assistant', content: appendedTail }, done: false })}\n`;
 
     const mergedStream = new ReadableStream<Uint8Array>({
       async start(controller) {
