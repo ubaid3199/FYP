@@ -1,6 +1,3 @@
-const { PDFParse } = require("pdf-parse");
-const PDFParser = require("pdf2json");
-
 export interface PdfExtractionDiagnostics {
   text: string;
   parserUsed: "pdf-parse" | "pdf2json" | "pdf-parse-poor" | "pdf2json-poor" | "none";
@@ -36,7 +33,19 @@ export function hasPoorQuality(text: string, sourceBytes: number): boolean {
 }
 
 async function parseWithPdfParse(buffer: Buffer): Promise<string> {
-  const parser = new PDFParse({ data: buffer });
+  let PDFParseCtor: any = null;
+  try {
+    // Lazy-load to avoid Next.js build-time evaluation failures.
+    PDFParseCtor = require("pdf-parse")?.PDFParse;
+  } catch (error: any) {
+    throw new Error(error?.message || "pdf-parse import failed");
+  }
+
+  if (!PDFParseCtor) {
+    throw new Error("pdf-parse missing PDFParse export");
+  }
+
+  const parser = new PDFParseCtor({ data: buffer });
   try {
     const parsed = await parser.getText();
     return normalizeText(parsed?.text || "");
@@ -47,7 +56,16 @@ async function parseWithPdfParse(buffer: Buffer): Promise<string> {
 
 async function parseWithPdf2Json(buffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
-    const parser = new PDFParser();
+    let PDFParserCtor: any = null;
+    try {
+      // Lazy-load to avoid build-time crashes if native deps are missing.
+      PDFParserCtor = require("pdf2json");
+    } catch (error: any) {
+      reject(new Error(error?.message || "pdf2json import failed"));
+      return;
+    }
+
+    const parser = new PDFParserCtor();
 
     parser.on("pdfParser_dataError", (err: any) => {
       reject(new Error(err?.parserError || "pdf2json parse error"));

@@ -1,0 +1,68 @@
+# ── PORTAL HOME ───────────────────────────────────────────────────────────────
+https://roehamptonprod.sharepoint.com/sites/portal/nest/Pages/default.aspx
+
+# ── ENROLMENT ─────────────────────────────────────────────────────────────────
+https://roehamptonprod.sharepoint.com/sites/portal/nest/enrolment/Pages/default.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/enrolment/Pages/undergraduate.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/enrolment/Pages/postgraduate.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/enrolment/Pages/pgce.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/enrolment/Pages/pgr.aspx
+
+# ── TIMETABLE ─────────────────────────────────────────────────────────────────
+https://roehamptonprod.sharepoint.com/sites/portal/nest/timetable/Pages/default.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/timetable/Pages/your-timetable.aspx
+
+# ── ACADEMIC SUPPORT ──────────────────────────────────────────────────────────
+https://roehamptonprod.sharepoint.com/sites/portal/nest/academic-support/Pages/default.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/academic-support/Pages/your-studies.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/academic-support/Pages/your-records.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/academic-support/Pages/referencing.aspx
+
+# ── EXAMINATIONS ──────────────────────────────────────────────────────────────
+https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/default.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/mitigating-circumstances.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/Types-of-mitigating-circumstances-requests.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/timetables.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/results.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/marks-and-assessment.aspx
+
+# ── UNIVERSITY LIFE ───────────────────────────────────────────────────────────
+https://roehamptonprod.sharepoint.com/sites/portal/nest/university-life/Pages/default.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/university-life/Pages/fire-health-and-safety.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/university-life/Pages/student-code-of-conduct.aspx
+
+# ── STUDENT SERVICES ──────────────────────────────────────────────────────────
+https://roehamptonprod.sharepoint.com/sites/portal/nest/studentservices/Pages/default.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/studentservices/Pages/wellbeing.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/studentservices/Pages/counselling.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/studentservices/Pages/disability.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/studentservices/Pages/finance.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/studentservices/Pages/international.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/studentservices/Pages/careers.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/studentservices/Pages/accommodation.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/studentservices/Pages/sport.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/studentservices/Pages/chaplaincy.aspx
+
+# ── LIBRARY ───────────────────────────────────────────────────────────────────
+https://roehamptonprod.sharepoint.com/sites/portal/nest/library/Pages/default.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/library/Pages/opening-hours.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/library/Pages/e-resources.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/library/Pages/study-spaces.aspx
+
+# ── CAMPUS & IT ───────────────────────────────────────────────────────────────
+https://roehamptonprod.sharepoint.com/sites/portal/nest/campus/Pages/default.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/campus/Pages/maps.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/campus/Pages/parking.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/campus/Pages/catering.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/it/Pages/default.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/it/Pages/wifi.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/nest/it/Pages/software.aspx
+
+# ── INFORMATION & REGULATIONS ─────────────────────────────────────────────────
+https://roehamptonprod.sharepoint.com/sites/portal/information/Pages/default.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/information/Pages/regulations.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/information/Pages/appeals.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/information/Pages/complaints.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/information/academic/Pages/default.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/information/examinations/Pages/default.aspx
+https://roehamptonprod.sharepoint.com/sites/portal/information/student-support/Pages/default.aspx

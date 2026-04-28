@@ -30,6 +30,7 @@ export function ChatPanel({
     setIsRestricted,
     selectedModel,
     setSelectedModel,
+    availableModels,
     sendMessage,
     clearChat,
   } = useChat();
@@ -159,25 +160,35 @@ export function ChatPanel({
               value={selectedModel}
               onChange={(e) =>
                 setSelectedModel(
-                  e.target.value as 'gemma3:1b' | 'gemma3:latest' | 'gemma4:e2b'
+                  e.target.value as any
                 )
               }
               disabled={isLoading}
               className="rounded-md border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold text-slate-200 outline-none focus:border-blue-400/60 disabled:opacity-50"
             >
-              <option value="gemma3:1b">gemma3:1b</option>
-              <option value="gemma3:latest">gemma3:latest</option>
-              <option value="gemma4:e2b">gemma4:e2b</option>
+              {availableModels.map((model) => {
+                const label = model === 'automatic'
+                  ? 'Automatic Mode'
+                  : /\b(llava|vision)\b/i.test(model)
+                    ? `${model} (Vision)`
+                    : model;
+                return (
+                  <option key={model} value={model}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>
 
         <button
           onClick={clearChat}
-          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-all border border-transparent hover:border-red-400/20"
-          title="Clear Chat"
+          className="flex items-center gap-1.5 p-1.5 px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-all border border-white/10 hover:border-red-400/30"
+          title="Clear chat history and start fresh"
         >
           <Trash2 size={14} />
+          New Chat
         </button>
       </div>
 

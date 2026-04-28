@@ -1,0 +1,240 @@
+{
+  "summary": {
+    "label": "links_grounded_patch_v3",
+    "total": 12,
+    "passed": 9,
+    "failed": 3,
+    "passRate": 75,
+    "avgMs": 378,
+    "p95Ms": 531,
+    "localPathLeaks": 0,
+    "urlResponses": 2,
+    "ranAt": "2026-04-21T18:32:33.310Z"
+  },
+  "results": [
+    {
+      "id": "T1",
+      "prompt": "how can i apply for mitigating circumstances",
+      "statusCode": 200,
+      "ms": 122,
+      "pass": true,
+      "checks": [
+        {
+          "name": "has-link",
+          "pass": true
+        },
+        {
+          "name": "no-local-path",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": true,
+      "answerPreview": "Use this Mitigating Circumstances portal link (latest): https://rulattendance.seats.cloud/angular/#/me Helpful links/forms: - Form: https://rulattendance.seats.cloud/angular/#/me - Link: https://roehamptonprod.sharepoin"
+    },
+    {
+      "id": "T2",
+      "prompt": "how can i apply for mitigating circumstances and give me source",
+      "statusCode": 200,
+      "ms": 9,
+      "pass": true,
+      "checks": [
+        {
+          "name": "has-sources-heading",
+          "pass": true
+        },
+        {
+          "name": "has-url",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": true,
+      "answerPreview": "Use this Mitigating Circumstances portal link (latest): https://rulattendance.seats.cloud/angular/#/me Sources: - https://rulattendance.seats.cloud/angular/#/me - https://roehamptonprod.sharepoint.com/sites/portal/nest/"
+    },
+    {
+      "id": "T3",
+      "prompt": "hello",
+      "statusCode": 200,
+      "ms": 531,
+      "pass": true,
+      "checks": [
+        {
+          "name": "no-sources-block",
+          "pass": true
+        },
+        {
+          "name": "no-local-path",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I could not complete the model request right now. Please try again in a moment, or switch to a lighter model like gemma3:1b."
+    },
+    {
+      "id": "T4",
+      "prompt": "i am injured what should i do on campus",
+      "statusCode": 200,
+      "ms": 478,
+      "pass": true,
+      "checks": [
+        {
+          "name": "actionable-answer",
+          "pass": true
+        },
+        {
+          "name": "no-local-path",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I could not complete the model request right now. Please try again in a moment, or switch to a lighter model like gemma3:1b."
+    },
+    {
+      "id": "T5",
+      "prompt": "how do i contact security and provide source",
+      "statusCode": 200,
+      "ms": 483,
+      "pass": true,
+      "checks": [
+        {
+          "name": "has-url-or-safe-fallback",
+          "pass": true
+        },
+        {
+          "name": "no-local-path",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I could not complete the model request right now. Please try again in a moment, or switch to a lighter model like gemma3:1b."
+    },
+    {
+      "id": "T6",
+      "prompt": "financial support options for students with links",
+      "statusCode": 200,
+      "ms": 506,
+      "pass": false,
+      "checks": [
+        {
+          "name": "has-link",
+          "pass": false
+        },
+        {
+          "name": "has-helpful-links-or-detail",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I could not complete the model request right now. Please try again in a moment, or switch to a lighter model like gemma3:1b."
+    },
+    {
+      "id": "T7",
+      "prompt": "library opening hours and give source",
+      "statusCode": 200,
+      "ms": 435,
+      "pass": true,
+      "checks": [
+        {
+          "name": "has-source-or-safe-fallback",
+          "pass": true
+        },
+        {
+          "name": "no-local-path",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I could not complete the model request right now. Please try again in a moment, or switch to a lighter model like gemma3:1b."
+    },
+    {
+      "id": "T8",
+      "prompt": "give me links/forms for enrolment",
+      "statusCode": 200,
+      "ms": 494,
+      "pass": false,
+      "checks": [
+        {
+          "name": "has-link",
+          "pass": false
+        },
+        {
+          "name": "no-local-path",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I could not complete the model request right now. Please try again in a moment, or switch to a lighter model like gemma3:1b."
+    },
+    {
+      "id": "T9",
+      "prompt": "what is the source",
+      "statusCode": 200,
+      "ms": 212,
+      "pass": true,
+      "checks": [
+        {
+          "name": "non-empty",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I could not complete the model request right now. Please try again in a moment, or switch to a lighter model like gemma3:1b."
+    },
+    {
+      "id": "T10",
+      "prompt": "explain photosynthesis in 2 lines",
+      "statusCode": 200,
+      "ms": 408,
+      "pass": true,
+      "checks": [
+        {
+          "name": "domain-general-answer",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I could not complete the model request right now. Please try again in a moment, or switch to a lighter model like gemma3:1b."
+    },
+    {
+      "id": "T11",
+      "prompt": "where can i find examination timetable with links",
+      "statusCode": 200,
+      "ms": 436,
+      "pass": true,
+      "checks": [
+        {
+          "name": "has-link-or-safe-fallback",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I could not complete the model request right now. Please try again in a moment, or switch to a lighter model like gemma3:1b."
+    },
+    {
+      "id": "T12",
+      "prompt": "cost of living support options and forms",
+      "statusCode": 200,
+      "ms": 418,
+      "pass": false,
+      "checks": [
+        {
+          "name": "has-link",
+          "pass": false
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I could not complete the model request right now. Please try again in a moment, or switch to a lighter model like gemma3:1b."
+    }
+  ]
+}

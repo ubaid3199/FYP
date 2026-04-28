@@ -1,0 +1,240 @@
+{
+  "summary": {
+    "label": "cpu_r2",
+    "total": 12,
+    "passed": 10,
+    "failed": 2,
+    "passRate": 83.3,
+    "avgMs": 20157,
+    "p95Ms": 77585,
+    "localPathLeaks": 0,
+    "urlResponses": 7,
+    "ranAt": "2026-04-21T14:57:31.597Z"
+  },
+  "results": [
+    {
+      "id": "T1",
+      "prompt": "how can i apply for mitigating circumstances",
+      "statusCode": 200,
+      "ms": 33,
+      "pass": true,
+      "checks": [
+        {
+          "name": "has-link",
+          "pass": true
+        },
+        {
+          "name": "no-local-path",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": true,
+      "answerPreview": "Use this Mitigating Circumstances portal link (latest): https://rulattendance.seats.cloud/angular/#/me Helpful links/forms: - Form: https://rulattendance.seats.cloud/angular/#/me - Link: https://roehamptonprod.sharepoin"
+    },
+    {
+      "id": "T2",
+      "prompt": "how can i apply for mitigating circumstances and give me source",
+      "statusCode": 200,
+      "ms": 23,
+      "pass": true,
+      "checks": [
+        {
+          "name": "has-sources-heading",
+          "pass": true
+        },
+        {
+          "name": "has-url",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": true,
+      "answerPreview": "Use this Mitigating Circumstances portal link (latest): https://rulattendance.seats.cloud/angular/#/me Sources: - https://rulattendance.seats.cloud/angular/#/me - https://roehamptonprod.sharepoint.com/sites/portal/nest/"
+    },
+    {
+      "id": "T3",
+      "prompt": "hello",
+      "statusCode": 200,
+      "ms": 50951,
+      "pass": true,
+      "checks": [
+        {
+          "name": "no-sources-block",
+          "pass": true
+        },
+        {
+          "name": "no-local-path",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": true,
+      "answerPreview": "Hello, how can I help you today? You can apply to become a Student Ambassador here: https://roehamptonprod.sharepoint.com/sites/portal/nest/newsandevents/Pages/read.aspx?sid=17246&cc=553822"
+    },
+    {
+      "id": "T4",
+      "prompt": "i am injured what should i do on campus",
+      "statusCode": 200,
+      "ms": 41772,
+      "pass": true,
+      "checks": [
+        {
+          "name": "actionable-answer",
+          "pass": true
+        },
+        {
+          "name": "no-local-path",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": true,
+      "answerPreview": "If you are injured on campus, contact security immediately at 020 8392 (3333) for assistance. [UoR Staff/Student Portal - First Aid](https://roehamptonprod.sharepoint.com/sites/portal/information/healthandsafety/Document"
+    },
+    {
+      "id": "T5",
+      "prompt": "how do i contact security and provide source",
+      "statusCode": 200,
+      "ms": 870,
+      "pass": true,
+      "checks": [
+        {
+          "name": "has-url-or-safe-fallback",
+          "pass": true
+        },
+        {
+          "name": "no-local-path",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I do not have a verified source for that previous claim. Please check Student Services, Security, or the official university directory for a confirmed contact resource."
+    },
+    {
+      "id": "T6",
+      "prompt": "financial support options for students with links",
+      "statusCode": 200,
+      "ms": 725,
+      "pass": false,
+      "checks": [
+        {
+          "name": "has-link",
+          "pass": false
+        },
+        {
+          "name": "has-helpful-links-or-detail",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I cannot verify a reliable factual answer from the retrieved documents. Please use the official university directory, Student Services, or campus Security to confirm."
+    },
+    {
+      "id": "T7",
+      "prompt": "library opening hours and give source",
+      "statusCode": 200,
+      "ms": 659,
+      "pass": true,
+      "checks": [
+        {
+          "name": "has-source-or-safe-fallback",
+          "pass": true
+        },
+        {
+          "name": "no-local-path",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I do not have a verified source for that previous claim. Please check Student Services, Security, or the official university directory for a confirmed contact resource."
+    },
+    {
+      "id": "T8",
+      "prompt": "give me links/forms for enrolment",
+      "statusCode": 200,
+      "ms": 673,
+      "pass": false,
+      "checks": [
+        {
+          "name": "has-link",
+          "pass": false
+        },
+        {
+          "name": "no-local-path",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I cannot verify a reliable factual answer from the retrieved documents. Please use the official university directory, Student Services, or campus Security to confirm."
+    },
+    {
+      "id": "T9",
+      "prompt": "what is the source",
+      "statusCode": 200,
+      "ms": 248,
+      "pass": true,
+      "checks": [
+        {
+          "name": "non-empty",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": false,
+      "answerPreview": "Not confirmed in docs. I do not have a verified source for that previous claim. Please check Student Services, Security, or the official university directory for a confirmed contact resource."
+    },
+    {
+      "id": "T10",
+      "prompt": "explain photosynthesis in 2 lines",
+      "statusCode": 200,
+      "ms": 33715,
+      "pass": true,
+      "checks": [
+        {
+          "name": "domain-general-answer",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": true,
+      "answerPreview": "Photosynthesis is the process where plants use sunlight, water, and carbon dioxide to create their own food (glucose) and release oxygen. It’s a fundamental process for life on Earth. Helpful links/forms: - Form: https:"
+    },
+    {
+      "id": "T11",
+      "prompt": "where can i find examination timetable with links",
+      "statusCode": 200,
+      "ms": 34627,
+      "pass": true,
+      "checks": [
+        {
+          "name": "has-link-or-safe-fallback",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": true,
+      "answerPreview": "You can find the examination timetable here: [https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/examination-guidelines.aspx](https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/P"
+    },
+    {
+      "id": "T12",
+      "prompt": "cost of living support options and forms",
+      "statusCode": 200,
+      "ms": 77585,
+      "pass": true,
+      "checks": [
+        {
+          "name": "has-link",
+          "pass": true
+        }
+      ],
+      "hasLocalPathLeak": false,
+      "hasUrl": true,
+      "answerPreview": "Roehampton University offers cost of living support to eligible students. [Source 1] Here’s how to apply: 1. Visit the Cost of Living Support page: [https://roehamptonprod.sharepoint.com/sites/portal/nest/Pages/cost-o"
+    }
+  ]
+}

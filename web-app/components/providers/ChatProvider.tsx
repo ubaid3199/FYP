@@ -3,8 +3,19 @@
 import { useSession } from './SessionProvider';
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 
-type ChatModel = 'gemma3:1b' | 'gemma3:latest' | 'gemma4:e2b';
-const DEFAULT_CHAT_MODEL: ChatModel = 'gemma3:1b';
+type ChatModel = string;
+const DEFAULT_CHAT_MODEL: ChatModel = 'automatic';
+const FALLBACK_MODELS: ChatModel[] = [
+  'automatic',
+  'gemma3:1b',
+  'gemma3:latest',
+  'gemma4:e2b',
+  'gemma4:e4b',
+  'llava:llava',
+  'llava:latest',
+  'gpt-oss:20b',
+  'llama3',
+];
 
 interface Message {
   id: string;
@@ -20,6 +31,7 @@ interface ChatContextType {
   setIsRestricted: (value: boolean) => void;
   selectedModel: ChatModel;
   setSelectedModel: (value: ChatModel) => void;
+  availableModels: ChatModel[];
   sendMessage: (content: string) => Promise<void>;
   clearChat: () => void;
 }
@@ -31,6 +43,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isRestricted, setIsRestricted] = useState(true); // Default to restricted from Phase 9/12
   const [selectedModel, setSelectedModel] = useState<ChatModel>(DEFAULT_CHAT_MODEL);
+  const [availableModels, setAvailableModels] = useState<ChatModel[]>(FALLBACK_MODELS);
   const { session, isLoaded } = useSession();
   const isMounted = useRef(true);
 
@@ -60,17 +73,38 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isLoaded) return;
 
-    const savedModel = localStorage.getItem(modelKey);
-    if (
-      savedModel === 'gemma3:1b' ||
-      savedModel === 'gemma3:latest' ||
-      savedModel === 'gemma4:e2b'
-    ) {
-      setSelectedModel(savedModel);
-      return;
-    }
+    let cancelled = false;
 
-    setSelectedModel(DEFAULT_CHAT_MODEL);
+    const loadModels = async () => {
+      try {
+        const res = await fetch('/api/assistant/models', { method: 'GET' });
+        const data = await res.json().catch(() => null) as any;
+        const models = Array.isArray(data?.models) ? data.models.filter((m: any) => typeof m === 'string' && m.trim()) : [];
+        const nextAvailable = Array.from(new Set(['automatic', ...models]));
+        if (cancelled) return;
+        setAvailableModels(nextAvailable);
+
+        const savedModel = localStorage.getItem(modelKey);
+        if (savedModel && nextAvailable.includes(savedModel)) {
+          setSelectedModel(savedModel);
+        } else {
+          setSelectedModel(DEFAULT_CHAT_MODEL);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setAvailableModels(FALLBACK_MODELS);
+
+        const savedModel = localStorage.getItem(modelKey);
+        if (savedModel && FALLBACK_MODELS.includes(savedModel)) {
+          setSelectedModel(savedModel);
+        } else {
+          setSelectedModel(DEFAULT_CHAT_MODEL);
+        }
+      }
+    };
+
+    loadModels();
+    return () => { cancelled = true; };
   }, [isLoaded, modelKey]);
 
   useEffect(() => {
@@ -102,8 +136,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
 
     try {
-      console.log("[MyUni Chat] Fetching /api/chat...");
-      const response = await fetch('/api/chat', {
+      console.log("[MyUni Chat] Fetching /api/assistant/chat...");
+      const response = await fetch('/api/assistant/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -133,10 +167,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         const { value, done } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        buffer += chunk;
+        buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        buffer = lines.pop() || ''; // keep any incomplete trailing line
 
         for (const line of lines) {
           if (!line.trim()) continue;
@@ -156,30 +189,34 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               });
             }
           } catch (err) {
-            // Ignore partial/invalid JSON in the stream
+            // Ignore partial/invalid JSON lines
           }
         }
       }
 
-      // Process any remaining data in the buffer
+      // Process any remaining complete data in the buffer
       if (buffer.trim()) {
-        try {
-          const data = JSON.parse(buffer);
-          if (data.message?.content) {
-            setMessages(prev => {
-              const newMessages = [...prev];
-              const lastIndex = newMessages.length - 1;
-              if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant') {
-                newMessages[lastIndex] = { 
-                  ...newMessages[lastIndex], 
-                  content: newMessages[lastIndex].content + data.message.content 
-                };
-              }
-              return newMessages;
-            });
+        const remainingLines = buffer.split('\n');
+        for (const line of remainingLines) {
+          if (!line.trim()) continue;
+          try {
+            const data = JSON.parse(line);
+            if (data.message?.content) {
+              setMessages(prev => {
+                const newMessages = [...prev];
+                const lastIndex = newMessages.length - 1;
+                if (lastIndex >= 0 && newMessages[lastIndex].role === 'assistant') {
+                  newMessages[lastIndex] = {
+                    ...newMessages[lastIndex],
+                    content: newMessages[lastIndex].content + data.message.content
+                  };
+                }
+                return newMessages;
+              });
+            }
+          } catch (err) {
+            console.warn("[MyUni Chat] Could not parse remaining buffer line:", err);
           }
-        } catch (err) {
-          console.warn("[MyUni Chat] Final buffer parse failed:", err);
         }
       }
     } catch (error: any) {
@@ -204,6 +241,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setIsRestricted,
         selectedModel,
         setSelectedModel,
+        availableModels,
         sendMessage,
         clearChat,
       }}

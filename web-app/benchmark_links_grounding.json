@@ -1,0 +1,122 @@
+{
+  "summary": {
+    "scrapedRoot": "C:\\Users\\Ubaid\\Desktop\\fyp\\pdf files\\scraped_2026_04_21_links",
+    "pageMapEntries": 308,
+    "pdfMapEntries": 335,
+    "allowedLinkCount": 636,
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "passRate": 100,
+    "ranAt": "2026-04-25T18:27:08.105Z"
+  },
+  "results": [
+    {
+      "id": "L1",
+      "prompt": "how can i apply for mitigating circumstances and give links/forms and sources",
+      "pass": true,
+      "statusCode": 200,
+      "ms": 36,
+      "urlCount": 3,
+      "inMapCount": 3,
+      "outOfMapCount": 0,
+      "hasLocalPathLeak": false,
+      "hasKeyword": true,
+      "urls": [
+        "https://rulattendance.seats.cloud/angular/#/me",
+        "https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/mitigating-circumstances.aspx",
+        "https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/Types-of-mitigating-circumstances-requests.aspx"
+      ],
+      "outOfMap": [],
+      "preview": "Use this Mitigating Circumstances portal link (latest): https://rulattendance.seats.cloud/angular/#/me Sources: - https://rulattendance.seats.cloud/angular/#/me - https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/m"
+    },
+    {
+      "id": "L2",
+      "prompt": "where can i find examination timetable with links and source",
+      "pass": true,
+      "statusCode": 200,
+      "ms": 15,
+      "urlCount": 6,
+      "inMapCount": 6,
+      "outOfMapCount": 0,
+      "hasLocalPathLeak": false,
+      "hasKeyword": true,
+      "urls": [
+        "https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/examination-timetable.aspx",
+        "https://www.roehampton.ac.uk/study/open-days/find-our-campus/",
+        "https://www.roehampton.ac.uk/student-life/accommodation/find-a-room/",
+        "https://roehamptonprod.sharepoint.com/sites/portal/nest/Pages/find-staff.aspx",
+        "https://www.roehampton.ac.uk/study/undergraduate-courses/human-resource-management/",
+        "https://roehamptonprod.sharepoint.com/sites/portal/nest/timetable/Pages/default.aspx"
+      ],
+      "outOfMap": [],
+      "preview": "Here are verified portal links/forms related to your request: \"where can i find examination timetable with links and source\". Helpful links/forms: - Form: https://roehamptonprod.sharepoint.com/sites/portal/nest/examinations/Pages/examinati"
+    },
+    {
+      "id": "L3",
+      "prompt": "cost of living support options and forms with links",
+      "pass": true,
+      "statusCode": 200,
+      "ms": 12,
+      "urlCount": 6,
+      "inMapCount": 6,
+      "outOfMapCount": 0,
+      "hasLocalPathLeak": false,
+      "hasKeyword": true,
+      "urls": [
+        "https://roehamptonprod.sharepoint.com/sites/portal/nest/Pages/cost-of-living-support.aspx",
+        "https://www.roehampton.ac.uk/support-us/",
+        "https://www.roehampton.ac.uk/student-support/",
+        "https://www.roehampton.ac.uk/student-support/library/",
+        "https://www.roehampton.ac.uk/student-support/care-leavers/",
+        "https://www.roehampton.ac.uk/student-support/our-facilities/"
+      ],
+      "outOfMap": [],
+      "preview": "Here are verified portal links/forms related to your request: \"cost of living support options and forms with links\". Helpful links/forms: - Form: https://roehamptonprod.sharepoint.com/sites/portal/nest/Pages/cost-of-living-support.aspx - L"
+    },
+    {
+      "id": "L4",
+      "prompt": "how do i contact security and provide source",
+      "pass": true,
+      "statusCode": 200,
+      "ms": 17,
+      "urlCount": 6,
+      "inMapCount": 6,
+      "outOfMapCount": 0,
+      "hasLocalPathLeak": false,
+      "hasKeyword": true,
+      "urls": [
+        "https://www.roehampton.ac.uk/contact-us/",
+        "https://www.roehampton.ac.uk/student-life/accommodation/contact-us/",
+        "https://www.roehampton.ac.uk/contact-us/prospective-student-enquiries/",
+        "https://www.roehampton.ac.uk/study/undergraduate-courses/human-resource-management/",
+        "https://www.roehampton.ac.uk/study/postgraduate-taught-courses/global-human-resources-management/",
+        "https://www.roehampton.ac.uk/study/apprenticeships/cyber-security-technical-professional-apprenticeship/"
+      ],
+      "outOfMap": [],
+      "preview": "Here are verified portal links/forms related to your request: \"how do i contact security and provide source\". Helpful links/forms: - Link: https://www.roehampton.ac.uk/contact-us/ - Link: https://www.roehampton.ac.uk/student-life/accommoda"
+    },
+    {
+      "id": "L5",
+      "prompt": "give me links/forms for enrolment",
+      "pass": true,
+      "statusCode": 200,
+      "ms": 21,
+      "urlCount": 6,
+      "inMapCount": 6,
+      "outOfMapCount": 0,
+      "hasLocalPathLeak": false,
+      "hasKeyword": true,
+      "urls": [
+        "https://roehamptonprod.sharepoint.com/sites/portal/nest/enrolment/Pages/pgce.aspx",
+        "https://roehamptonprod.sharepoint.com/sites/portal/nest/enrolment/Pages/research.aspx",
+        "https://roehamptonprod.sharepoint.com/sites/portal/nest/enrolment/Pages/postgraduate.aspx",
+        "https://roehamptonprod.sharepoint.com/sites/portal/nest/enrolment/Pages/undergraduate.aspx",
+        "https://roehamptonprod.sharepoint.com/sites/portal/nest/enrolment/Pages/foundation-year.aspx",
+        "https://roehamptonprod.sharepoint.com/sites/portal/nest/enrolment/Pages/ministerial-theology.aspx"
+      ],
+      "outOfMap": [],
+      "preview": "Here are verified portal links/forms related to your request: \"give me links/forms for enrolment\". Helpful links/forms: - Form: https://roehamptonprod.sharepoint.com/sites/portal/nest/enrolment/Pages/pgce.aspx - Form: https://roehamptonpro"
+    }
+  ]
+}

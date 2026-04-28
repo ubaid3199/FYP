@@ -1,12 +1,15 @@
 ﻿const http = require('http');
 
+const BENCH_MODEL = process.env.BENCH_MODEL || 'gemma3:latest';
+
 async function ask(prompt) {
     return new Promise((resolve, reject) => {
         const postData = JSON.stringify({
             messages: [{ role: 'user', content: prompt }],
             userId: 'benchmarker_' + Date.now(),
-            model: 'gemma3:latest',
-            stream: true
+            model: BENCH_MODEL,
+            stream: true,
+            isRestricted: false
         });
 
         const options = {
@@ -18,7 +21,7 @@ async function ask(prompt) {
                 'Content-Type': 'application/json',
                 'Content-Length': Buffer.byteLength(postData)
             },
-            timeout: 60000
+            timeout: 180000
         };
 
         const req = http.request(options, (res) => {
@@ -38,7 +41,7 @@ async function ask(prompt) {
         });
 
         req.on('error', (e) => reject(new Error(`Request error: ${e.message}`)));
-        req.on('timeout', () => { req.destroy(); reject(new Error('Timeout after 60s')); });
+        req.on('timeout', () => { req.destroy(); reject(new Error('Timeout after 180s')); });
         req.write(postData);
         req.end();
     });

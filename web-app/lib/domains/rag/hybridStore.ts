@@ -74,7 +74,8 @@ interface RetrievalMetrics {
   totalLatencyMs: number;
 }
 
-const VECTOR_STORE_PATH = path.join(process.cwd(), "..", "hybrid_store.json");
+const VECTOR_STORE_DIR = process.env.VECTOR_STORE_DIR || path.join(process.cwd(), ".vector_store");
+const VECTOR_STORE_PATH = path.join(VECTOR_STORE_DIR, "hybrid_store.json");
 
 function getStoreMtimeMs() {
   try {
@@ -250,6 +251,14 @@ export class HybridRAG {
       embeddingsStore: this.embeddingsStore,
       documents: this.documents,
     };
+    const dir = path.dirname(VECTOR_STORE_PATH);
+
+    if (!fs.existsSync(dir)) {
+
+      fs.mkdirSync(dir, { recursive: true });
+
+    }
+
     fs.writeFileSync(VECTOR_STORE_PATH, JSON.stringify(data));
     console.log("Saved hybrid store securely to disk.");
   }
@@ -551,7 +560,7 @@ export async function getRAGStore() {
     try {
       const embeddings = new OllamaEmbeddings({ 
         model: process.env.OLLAMA_EMBEDDING_MODEL || "nomic-embed-text:latest",
-        baseUrl: 'http://127.0.0.1:11434'
+        baseUrl: 'http://127.0.0.1:11434',
       });
       const store = new HybridRAG(embeddings);
       await store.loadFromDisk();
