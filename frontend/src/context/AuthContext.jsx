@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
 import api from '../api/axios'; // We'll keep this since your initAuth uses it
 
 const AuthContext = createContext();
@@ -26,13 +25,10 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (email, password) => {
+ const login = async (email, password) => {
     try {
-      // 1. Send the request to the hardcoded backend URL
-      const response = await axios.post('http://localhost:5001/api/auth/login', {
-        email,
-        password
-      });
+      // Send the request via the shared API client (baseURL is configured in ../api/axios)
+      const response = await api.post('/auth/login', { email, password });
 
       // 2. CRITICAL: Extract the token and user from the backend response
       const { token, user: userData } = response.data;
