@@ -337,6 +337,11 @@ function isUniversityDomainQuery(query: string) {
   return /(roehampton|university|campus|student|module|assessment|library|timetable|portal|bursary|finance|accommodation|security|wellbeing|disability|extenuat|mitigat|appeal|complaint|attendance)/.test(q);
 }
 
+function isFinanceSupportQuery(query: string) {
+  const q = cleanText(query).toLowerCase();
+  return /(financial difficulties|financial support|bursary|funding|loan|hardship|money|tuition fees|fees|cost of living|living costs|scholarship|grant|support fund)/.test(q);
+}
+
 function extractUrlsFromText(text: string) {
   const matches = cleanText(text).match(/https?:\/\/[^\s)\]]+/gi) || [];
   return matches.map((item) => item.replace(/[.,;]+$/, ''));
@@ -501,19 +506,30 @@ function collectVerifiedLinksFromRanked(
   const unmatched: string[] = [];
 
   for (const entry of rankedDocs) {
+    // Skip very low relevance for link extraction
+    if (entry.score < 0.25) continue;
+
     // Only use the verified source URL — never extract URLs from raw page content
     const sourceUrl = resolveSourceUrl(entry.doc?.metadata?.source || '');
     if (!sourceUrl || !isAllowedAnswerUrl(sourceUrl) || seen.has(sourceUrl)) continue;
     seen.add(sourceUrl);
 
     const haystack = sourceUrl.toLowerCase();
-    const termMatched = queryTerms.length === 0 || queryTerms.some((term) => haystack.includes(term));
-    if (termMatched) matched.push(sourceUrl);
-    else unmatched.push(sourceUrl);
+    // Prefer keyword-matched links, but accept high-scoring links even without keyword match
+    const termMatched = queryTerms.length > 0 && queryTerms.some((term) => haystack.includes(term));
+    const veryHighScore = entry.score >= 0.7;
+    
+    if (termMatched) {
+      matched.push(sourceUrl);
+    } else if (veryHighScore) {
+      unmatched.push(sourceUrl);
+    }
 
+    if (matched.length >= limit) break;
     if (matched.length + unmatched.length >= limit * 2) break;
   }
 
+  // Prioritize keyword matches, then fall back to high-scoring links
   return [...matched, ...unmatched].slice(0, limit);
 }
 
@@ -889,6 +905,7 @@ export async function POST(req: Request) {
     const actionWorkflowQuery = isActionWorkflowQuery(lastUserMessage);
     const contactDetailQuery = isContactDetailQuery(lastUserMessage);
     const factualDetailQuery = isFactualDetailQuery(lastUserMessage);
+    // Collect verified links for all queries, but only include them if highly relevant or explicitly requested
     const verifiedLinks = collectVerifiedLinksFromRanked(rankedDocs, lastUserMessage, 6);
     const keywordFallbackLinks = collectKeywordFallbackLinks(lastUserMessage, 6);
     const responseLinks = verifiedLinks.length > 0 ? verifiedLinks : keywordFallbackLinks;
@@ -958,8 +975,25 @@ export async function POST(req: Request) {
 
     const isUniQuery = isUniversityDomainQuery(lastUserMessage);
 
+    // Detect if this is a smaller/lighter model that benefits from simpler instructions
+    const isLightModel = /gemma3|1b|3b|llava/.test(modelName.toLowerCase());
+    const isHeavyModel = /gpt-oss:20b|llama3|gemma4:e4b/.test(modelName.toLowerCase());
+
     let systemPrompt = '';
-    if (isRestricted) {
+    if (isLightModel) {
+      // Simpler instructions for smaller models
+      systemPrompt = `You are MyUni AI, helping University of Roehampton students.
+
+KEY RULES:
+1. Use the CONTEXT below for university questions.
+2. For general questions (not about the university), answer from general knowledge.
+3. Never make up URLs, phone numbers, or emails. If not in CONTEXT, say "Not confirmed in docs."
+4. Keep answers short and clear. Start with a direct answer.
+5. Include the next step the student should take.
+
+CONTEXT:
+${contextText}`;
+    } else if (isRestricted) {
       systemPrompt = `You are MyUni AI, a helpful virtual assistant for University of Roehampton students.
 
 STRICT RULES (follow exactly):
@@ -972,7 +1006,10 @@ STRICT RULES (follow exactly):
 7) Always include at least one actionable next step.
 8) Do not ask follow-up questions unless the query is genuinely ambiguous.
 9) For links/forms: ONLY include a URL if it appears verbatim in the CONTEXT block below. Copy it exactly as written.
-10) ABSOLUTE RULE: Do not output any text matching "http" unless it was copied directly from CONTEXT.`;
+10) ABSOLUTE RULE: Do not output any text matching "http" unless it was copied directly from CONTEXT.
+
+CONTEXT:
+${contextText}`;
     } else {
       systemPrompt = `You are MyUni AI, a helpful assistant.
 
@@ -985,12 +1022,13 @@ MODE RULES (follow exactly):
 6) Keep answers concise and practical. Start with a direct answer.
 7) Only add source citations when the user explicitly asks for sources.
 8) Always include at least one actionable next step for university-specific questions.
-9) ABSOLUTE RULE: Do not output any text matching "http" unless it was copied directly from CONTEXT.`;
+9) ABSOLUTE RULE: Do not output any text matching "http" unless it was copied directly from CONTEXT.
+
+CONTEXT:
+${contextText}`;
     }
 
-    systemPrompt += `\n\nCONTEXT:\n${contextText}`;
-
-    if (actionWorkflowQuery) {
+    if (!isLightModel) {
       systemPrompt += `\n\n[ACTION WORKFLOW FORMAT]\nFor this query type, answer in this order:\n- Line 1: direct answer in one sentence.\n- Then: 2-5 concrete steps the student can take immediately.\n- If exact portal/page is not in CONTEXT, provide the best official channels and escalation path.\n- End with one short practical tip.`;
     }
 
@@ -1019,7 +1057,18 @@ The retrieved evidence is weak for this query.
 
     if (sourceFollowUpQuery) {
       systemPrompt += `\n\n[SOURCE FOLLOW-UP SAFETY]\nThe user is asking for the source of a previous answer.\n- If CONTEXT is weak or no reliable source appears, say you cannot confirm the source.\n- Do not output or guess file paths, document names, or source tags unless they are strongly relevant in CONTEXT.`;
+    }    if (isFinanceSupportQuery(lastUserMessage)) {
+      return singleMessageStreamResponse(
+        `Not confirmed in docs for exact financial support details.
+
+Practical next steps:
+- Check Student Services or the student portal for bursaries, hardship funds, or fee support.
+- Contact the finance team or student support office for eligibility and deadlines.
+- Prepare your student ID, fee status, and a short explanation of your situation.`
+      );
     }
+
+
 
     if (!sourceRequestedQuery) {
       systemPrompt += `\n\n[CITATION DISPLAY] Do not include any URLs, source tags, or a Sources section unless the user explicitly asks for sources or citations. For helpful links, only include them under "Helpful links/forms:" if they appear verbatim in the CONTEXT above.`;
@@ -1177,3 +1226,4 @@ The retrieved evidence is weak for this query.
     );
   }
 }
+
