@@ -4,8 +4,10 @@ const dotenv = require('dotenv');
 
 const connectDB = require('./utils/dbConnect');
 const authRoutes = require('./routes/authRoutes');
+const assistantRoutes = require('./routes/assistantRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const studentRoutes = require('./routes/studentRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 dotenv.config();
 
@@ -27,8 +29,15 @@ app.use(express.urlencoded({ extended: true }));
 
 // 3. ROUTES
 app.use('/api/auth', authRoutes);
+app.use('/api/assistant', assistantRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/users', userRoutes);
+
+// 404 for unknown API routes (JSON, not HTML)
+app.use('/api', (req, res) => {
+    res.status(404).json({ message: `Not found: ${req.method} ${req.originalUrl}` });
+});
 
 // 4. TEST HEALTH CHECK ROUTE
 app.get('/api/health', (req, res) => {

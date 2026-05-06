@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, X, Minus, Send, Plus, Shield, Globe, ShieldAlert, ChevronDown, UploadCloud, FileText, CheckCircle2 } from 'lucide-react';
+import api from '../../api/axios';
 
 export default function AdminUniBot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -8,14 +9,14 @@ export default function AdminUniBot() {
   const messagesEndRef = useRef(null);
 
   // --- ADMIN GLOBAL CONTROLS ---
-  const [activeModel, setActiveModel] = useState(() => localStorage.getItem('unibot_global_model') || 'gpt-oss 2b');
+  const [activeModel, setActiveModel] = useState(() => localStorage.getItem('unibot_global_model') || 'gpt-oss:20b');
   const [isRestricted, setIsRestricted] = useState(() => localStorage.getItem('unibot_global_restricted') !== 'false');
 
   // Custom Dropdown State
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const availableModels = [
-    { id: 'gpt-oss 2b', label: 'gpt-oss 2b (Cloud)' },
-    { id: 'gemma 2b', label: 'gemma 2b (Local)' },
+    { id: 'gpt-oss:20b', label: 'gpt-oss:20b' },
+    { id: 'gemma3:latest', label: 'gemma3:latest' },
     { id: 'gemma3:1b', label: 'gemma3:1b (Fast)' }
   ];
 
@@ -82,14 +83,28 @@ export default function AdminUniBot() {
     setIsTyping(true);
 
     try {
-      const aiText = await new Promise((resolve) => 
-        setTimeout(() => resolve(`[Running on ${activeModel}]: Processing complete. I am utilizing ${trainedFiles.length} embedded documents in ${isRestricted ? 'Restricted' : 'Extended'} mode to answer: "${text}"`), 1000)
-      );
+      const activeChat = chats.find(c => c.id === activeTabId);
+      const history = (activeChat?.messages || []).concat([newMessage]).map((msg) => ({
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.text,
+      }));
+
+      const response = await api.post('/assistant/chat', {
+        model: activeModel,
+        messages: history,
+        isRestricted,
+      });
+
+      const aiText = response.data?.message?.content;
+      if (!aiText) throw new Error('Empty AI response');
 
       const botResponse = { id: Date.now() + 1, text: aiText, sender: 'bot' };
       setChats(prev => prev.map(chat => chat.id === activeTabId ? { ...chat, messages: [...chat.messages, botResponse] } : chat));
     } catch (error) {
       console.error("Test Model Error:", error);
+      const errorText = error?.response?.data?.message || 'Error connecting to the AI. Is the model running?';
+      const botResponse = { id: Date.now() + 1, text: errorText, sender: 'bot' };
+      setChats(prev => prev.map(chat => chat.id === activeTabId ? { ...chat, messages: [...chat.messages, botResponse] } : chat));
     } finally {
       setIsTyping(false);
     }

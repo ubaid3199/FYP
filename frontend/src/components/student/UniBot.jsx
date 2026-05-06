@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Minus, Send, Plus, Sparkles } from 'lucide-react';
+import api from '../../api/axios';
 
 const UniBot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -80,22 +81,14 @@ const UniBot = () => {
         content: msg.text
       }));
 
-      const OLLAMA_URL = 'http://172.20.10.7:11434/api/chat'; 
-
-      const response = await fetch(OLLAMA_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          model: activeModel,
-          messages: ollamaMessages,
-          stream: false 
-        })
+      const response = await api.post('/assistant/chat', {
+        model: activeModel,
+        messages: ollamaMessages,
+        isRestricted: true,
       });
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-      const data = await response.json();
-      const aiText = data.message.content;
+      const aiText = response.data?.message?.content;
+      if (!aiText) throw new Error('Empty AI response');
 
       const botResponse = { id: Date.now() + 1, text: aiText, sender: 'bot' };
       setChats(prevChats => prevChats.map(chat => 
