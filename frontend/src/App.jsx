@@ -4,11 +4,11 @@ import AdminDashboard from './pages/admin/Dashboard';
 import AdminLayout from './components/Layout/AdminLayout';
 import StudentDashboard from './pages/student/Dashboard';
 import AdminStudents from './pages/admin/Students';
+import AdminAssignments from './pages/admin/Assignments';
+import AdminCourses from './pages/admin/Courses';
 
 // Placeholder components (keep until those pages are implemented)
 const StudentProfile = () => <AdminLayout><div className="p-8"><h1>Student Profile</h1></div></AdminLayout>;
-const AssignmentsPage = () => <AdminLayout><div className="p-8"><h1>Pending Assignments</h1></div></AdminLayout>;
-const ModulesPage = () => <AdminLayout><div className="p-8"><h1>Course Modules</h1></div></AdminLayout>;
 
 function App() {
   return (
@@ -21,8 +21,8 @@ function App() {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/students" element={<AdminStudents />} />
         <Route path="/admin/students/:id" element={<StudentProfile />} />
-        <Route path="/admin/assignments" element={<AssignmentsPage />} />
-        <Route path="/admin/courses" element={<ModulesPage />} />
+        <Route path="/admin/assignments" element={<AdminAssignments />} />
+        <Route path="/admin/courses" element={<AdminCourses />} />
         
         {/* 🔥 FIX: Changed this to just "/dashboard" to match your login redirect */}
         <Route path="/dashboard" element={<StudentDashboard />} />

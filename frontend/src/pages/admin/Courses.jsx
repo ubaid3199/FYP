@@ -1,64 +1,150 @@
-import { motion } from 'framer-motion';
-import { BookOpen, Users, Calendar, MoreVertical, Search } from 'lucide-react';
-import Layout from '../../components/Layout/Layout';
+import { useMemo, useState } from 'react';
+import { Search, BookOpen, Users, Calendar, CheckCircle2 } from 'lucide-react';
+import AdminLayout from '../../components/Layout/AdminLayout';
 
-const Courses = () => {
-  const courses = [
-    { id: 1, name: 'Introduction to Computer Science', code: 'CS101', instructor: 'Dr. Smith', students: 45, duration: '12 weeks' },
-    { id: 2, name: 'Mathematics for Engineers', code: 'MATH201', instructor: 'Prof. Johnson', students: 38, duration: '16 weeks' },
-    { id: 3, name: 'Physics Fundamentals', code: 'PHY101', instructor: 'Dr. Williams', students: 52, duration: '14 weeks' },
-    { id: 4, name: 'English Literature', code: 'ENG102', instructor: 'Prof. Brown', students: 29, duration: '10 weeks' },
-    { id: 5, name: 'Data Structures & Algorithms', code: 'CS201', instructor: 'Dr. Davis', students: 35, duration: '12 weeks' },
-  ];
+const AdminCourses = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const courses = useMemo(
+    () => [
+      {
+        id: 'MOD-CS101',
+        name: 'Introduction to Computer Science',
+        code: 'CS101',
+        instructor: 'Dr. Smith',
+        students: 45,
+        duration: '12 weeks',
+        status: 'active',
+      },
+      {
+        id: 'MOD-CS201',
+        name: 'Data Structures & Algorithms',
+        code: 'CS201',
+        instructor: 'Dr. Davis',
+        students: 35,
+        duration: '12 weeks',
+        status: 'active',
+      },
+      {
+        id: 'MOD-DB210',
+        name: 'Database Systems',
+        code: 'CS210',
+        instructor: 'Prof. Johnson',
+        students: 38,
+        duration: '10 weeks',
+        status: 'active',
+      },
+      {
+        id: 'MOD-AI350',
+        name: 'AI & Society',
+        code: 'CS350',
+        instructor: 'Dr. Williams',
+        students: 41,
+        duration: '8 weeks',
+        status: 'draft',
+      },
+      {
+        id: 'MOD-OS301',
+        name: 'Operating Systems',
+        code: 'CS301',
+        instructor: 'Prof. Brown',
+        students: 33,
+        duration: '14 weeks',
+        status: 'active',
+      },
+    ],
+    []
+  );
+
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return courses;
+    return courses.filter((c) => {
+      const hay = `${c.name} ${c.code} ${c.instructor} ${c.id}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [courses, searchQuery]);
+
+  const statusPill = (status) => {
+    if (status === 'draft') return 'bg-gray-50 text-gray-600 border-gray-200';
+    return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  };
 
   return (
-    <Layout>
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
+    <AdminLayout>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Header / Toolbar */}
+        <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">Courses</h1>
-            <p className="text-white/50 mt-1">Manage all courses</p>
+            <h2 className="text-xl font-bold text-gray-800">Courses</h2>
+            <p className="text-sm text-gray-500 mt-1">Manage modules and enrollment</p>
           </div>
-          <button className="px-4 py-2 bg-roeGreen rounded-lg text-white hover:bg-emerald-500 transition-colors">
-            Add Course
-          </button>
+
+          <div className="flex gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-72">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search course, code, or instructor..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0B4C3A]/20 focus:border-[#0B4C3A] transition-all"
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map((course) => (
-            <motion.div
-              key={course.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6 hover:bg-white/[0.05] transition-colors"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-xl bg-roeGreen/20 flex items-center justify-center">
-                  <BookOpen className="text-roeGreen" size={24} />
+        {/* Cards */}
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filtered.map((course) => (
+              <div
+                key={course.id}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-500 flex items-center justify-center shrink-0 border border-gray-100">
+                      <BookOpen size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-gray-800 font-semibold truncate max-w-[14rem]">{course.name}</h3>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${statusPill(course.status)}`}>
+                          {course.status === 'draft' ? 'Draft' : 'Active'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-0.5">{course.code}</p>
+                    </div>
+                  </div>
+
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-[#0B4C3A] flex items-center justify-center border border-emerald-100 shrink-0">
+                    <CheckCircle2 size={16} />
+                  </div>
                 </div>
-                <button className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-                  <MoreVertical size={16} className="text-white/60" />
-                </button>
+
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Users size={14} className="text-gray-400" />
+                    <span>{course.students} students</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Calendar size={14} className="text-gray-400" />
+                    <span>{course.duration}</span>
+                  </div>
+                  <p className="text-gray-400 text-xs">{course.instructor}</p>
+                </div>
               </div>
-              <h3 className="text-white font-semibold mb-1">{course.name}</h3>
-              <p className="text-white/50 text-sm mb-4">{course.code}</p>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-white/60 text-sm">
-                  <Users size={14} />
-                  <span>{course.students} students</span>
-                </div>
-                <div className="flex items-center gap-2 text-white/60 text-sm">
-                  <Calendar size={14} />
-                  <span>{course.duration}</span>
-                </div>
-                <p className="text-white/40 text-xs">{course.instructor}</p>
-              </div>
-            </motion.div>
-          ))}
+            ))}
+          </div>
+
+          {filtered.length === 0 && (
+            <div className="py-10 text-center text-sm text-gray-500">No courses match your search.</div>
+          )}
         </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 };
 
-export default Courses;
+export default AdminCourses;

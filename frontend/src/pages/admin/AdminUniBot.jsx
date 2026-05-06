@@ -116,13 +116,13 @@ export default function AdminUniBot() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 w-14 h-14 bg-[#0B4C3A] text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 z-50 group ${isOpen ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}`}
+        className={`fixed bottom-6 right-4 sm:right-6 w-14 h-14 bg-[#0B4C3A] text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 z-50 group ${isOpen ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}`}
       >
         <Bot size={26} className="group-hover:animate-pulse" />
       </button>
 
       <div 
-        className={`fixed bottom-6 right-6 w-[24rem] sm:w-[28rem] h-[44rem] z-50 flex flex-col rounded-3xl shadow-[0_10px_40px_rgb(0,0,0,0.2)] border border-gray-200/50 bg-white/80 backdrop-blur-2xl transition-all duration-400 ease-out origin-bottom-right ${
+        className={`fixed bottom-6 right-4 sm:right-6 w-[calc(100vw-2rem)] max-w-[28rem] sm:max-w-none sm:w-[28rem] h-[44rem] max-h-[calc(100vh-6rem)] z-50 flex flex-col rounded-3xl shadow-[0_10px_40px_rgb(0,0,0,0.2)] border border-gray-200/50 bg-white/80 backdrop-blur-2xl transition-all duration-400 ease-out origin-bottom-right ${
           isOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
         }`}
       >

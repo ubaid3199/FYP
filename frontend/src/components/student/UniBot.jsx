@@ -129,7 +129,7 @@ const UniBot = () => {
       {/* FLOATING ACTION BUTTON */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-8 right-8 w-16 h-16 bg-[#0B4C3A] text-white rounded-full flex items-center justify-center shadow-2xl hover:shadow-emerald-900/50 hover:scale-105 transition-all duration-300 z-50 group ${isOpen ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}`}
+        className={`fixed bottom-8 right-4 sm:right-8 w-16 h-16 bg-[#0B4C3A] text-white rounded-full flex items-center justify-center shadow-2xl hover:shadow-emerald-900/50 hover:scale-105 transition-all duration-300 z-50 group ${isOpen ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}`}
       >
         <div className="absolute inset-0 rounded-full bg-emerald-400 opacity-20 group-hover:animate-ping"></div>
         <MessageSquare size={28} />
@@ -137,7 +137,7 @@ const UniBot = () => {
 
       {/* CHAT WINDOW - MADE BIGGER & BORDERLESS */}
       <div 
-        className={`fixed bottom-8 right-8 w-[24rem] sm:w-[28rem] h-[38rem] sm:h-[42rem] z-50 flex flex-col rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] bg-white/70 backdrop-blur-2xl transition-all duration-400 ease-out origin-bottom-right overflow-hidden ${
+        className={`fixed bottom-8 right-4 sm:right-8 w-[calc(100vw-2rem)] max-w-[28rem] sm:max-w-none sm:w-[28rem] h-[38rem] sm:h-[42rem] max-h-[calc(100vh-6rem)] z-50 flex flex-col rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] bg-white/70 backdrop-blur-2xl transition-all duration-400 ease-out origin-bottom-right overflow-hidden ${
           isOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
         }`}
       >

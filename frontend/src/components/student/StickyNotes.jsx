@@ -86,14 +86,14 @@ export default function StickyNotes() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-[5.5rem] right-6 w-12 h-12 bg-amber-400 text-amber-950 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 z-40 group ${isOpen ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}`}
+        className={`fixed bottom-32 right-8 w-12 h-12 bg-amber-400 text-amber-950 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 z-40 group ${isOpen ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'}`}
         title="Quick Notes"
       >
         <StickyNote size={20} className="group-hover:rotate-12 transition-transform duration-300" />
       </button>
 
       <div 
-        className={`fixed bottom-24 right-6 w-[22rem] sm:w-96 h-[28rem] z-50 flex flex-col rounded-3xl shadow-[0_15px_40px_rgb(0,0,0,0.15)] border border-white/60 bg-white/70 backdrop-blur-2xl transition-all duration-400 ease-out origin-bottom-right ${
+        className={`fixed bottom-28 right-4 sm:right-6 w-[calc(100vw-2rem)] max-w-[22rem] sm:max-w-none sm:w-96 h-[28rem] max-h-[calc(100vh-8rem)] z-50 flex flex-col rounded-3xl shadow-[0_15px_40px_rgb(0,0,0,0.15)] border border-white/60 bg-white/70 backdrop-blur-2xl transition-all duration-400 ease-out origin-bottom-right ${
           isOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
         }`}
       >
