@@ -11,14 +11,30 @@ const UniBot = () => {
   // 1. Initialize State from LocalStorage
   const [chats, setChats] = useState(() => {
     const savedChats = localStorage.getItem('unibot_chats');
-    if (savedChats) return JSON.parse(savedChats);
+    if (savedChats) {
+      try {
+        const parsed = JSON.parse(savedChats);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        // ignore corrupted storage
+      }
+    }
     return [{ id: 1, title: 'Main Chat', isMain: true, messages: [] }];
   });
 
   const [activeTabId, setActiveTabId] = useState(() => {
     const savedTab = localStorage.getItem('unibot_active_tab');
-    return savedTab ? parseInt(savedTab, 10) : 1;
+    const n = savedTab ? parseInt(savedTab, 10) : 1;
+    return Number.isFinite(n) && n > 0 ? n : 1;
   });
+
+  // Ensure active tab exists even if storage got out of sync
+  useEffect(() => {
+    if (!Array.isArray(chats) || chats.length === 0) return;
+    if (!chats.find((c) => c.id === activeTabId)) {
+      setActiveTabId(chats[0].id);
+    }
+  }, [chats, activeTabId]);
 
   // 2. Save to LocalStorage
   useEffect(() => {

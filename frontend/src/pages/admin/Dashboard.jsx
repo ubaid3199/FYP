@@ -3,11 +3,13 @@ import PriorityPanel from '../../components/Dashboard/PriorityPanel';
 import AtRiskPanel from '../../components/dashboard/AtRiskPanel';
 import ActivityFeed from '../../components/dashboard/ActivityFeed';
 import QuickManagement from '../../components/dashboard/QuickManagement';
+import QuickAccessGrid from '../../components/student/QuickAccessGrid';
 import { Users, BookOpen, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const AdminDashboard = () => {
   return (
     <AdminLayout>
+      <QuickAccessGrid variant="admin" />
       {/* 1. COMPACT STAT CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
         {[

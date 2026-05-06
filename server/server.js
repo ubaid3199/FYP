@@ -8,6 +8,7 @@ const assistantRoutes = require('./routes/assistantRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const studentRoutes = require('./routes/studentRoutes');
 const userRoutes = require('./routes/userRoutes');
+const quickLinkRoutes = require('./routes/quickLinkRoutes');
 
 dotenv.config();
 
@@ -33,15 +34,16 @@ app.use('/api/assistant', assistantRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/users', userRoutes);
-
-// 404 for unknown API routes (JSON, not HTML)
-app.use('/api', (req, res) => {
-    res.status(404).json({ message: `Not found: ${req.method} ${req.originalUrl}` });
-});
+app.use('/api/quicklinks', quickLinkRoutes);
 
 // 4. TEST HEALTH CHECK ROUTE
 app.get('/api/health', (req, res) => {
     res.status(200).json({ status: 'Server is healthy and reachable!' });
+});
+
+// 404 for unknown API routes (JSON, not HTML)
+app.use('/api', (req, res) => {
+    res.status(404).json({ message: `Not found: ${req.method} ${req.originalUrl}` });
 });
 
 // 5. STARTUP

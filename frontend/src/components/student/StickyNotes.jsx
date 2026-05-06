@@ -7,7 +7,14 @@ export default function StickyNotes() {
   // 1. Initialize from LocalStorage
   const [notes, setNotes] = useState(() => {
     const saved = localStorage.getItem('myuni_student_notes');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        // ignore corrupted storage
+      }
+    }
     return [
       { id: 1, title: 'Quick Note', content: '', pinned: false, lastEdited: Date.now() }
     ];
